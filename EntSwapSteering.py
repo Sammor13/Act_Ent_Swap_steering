@@ -386,7 +386,25 @@ def trajec(Nqb, psi0, psiTarg, N, DeltaT, J, pList, eps, K, Nst):
     elif K == 14:
         slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1,1,1]
         aList = [1,2,3,1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2] 
+        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2]
+        
+    elif K == 3:
+        slist = [1,1,1]
+        aList = [1,2,3]
+        bList = [1,1,1]
+    elif K == 6:
+        slist = [1,1,1,1,1,1]
+        aList = [1,2,3,1,2,3]
+        bList = [1,1,1,2,2,2]
+        ##incl a=0
+    elif K == 4:
+        slist = [1,1,1,1]
+        aList = [0,1,2,3]
+        bList = [1,1,1,1]
+    elif K == 8:
+        slist = [1,1,1,1,1,1,1,1]
+        aList = [0,1,2,3,0,1,2,3]
+        bList = [1,1,1,1,2,2,2,2]
         
     ##operator list
     pauliPlaqList = plaqSlist(Nqb)
@@ -570,7 +588,11 @@ def unitsol(psi, deltaT, H, c_op, P):
     #P = qt.expect(c_op.dag()*c_op, psi)*deltaT
     if rng.random() >= P:
         #return qt.sesolve(H, psi, np.array([0,deltaT]), []).states[1], 0
-        return schroesol(psi, deltaT, H), 0
+    #    return schroesol(psi, deltaT, H), 0
+        if psi.type == 'ket':
+            return ((1-1j*deltaT*H-P/2)*psi).unit(), 0
+        elif psi.type == 'oper':
+            return ((1-P)*psi-1j*deltaT*(H*psi-psi*H)).unit(), 0
     else:
         if psi.type == 'ket':
             return (c_op*psi).unit(), 1
@@ -990,7 +1012,25 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
     elif K == 14:
         slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1,1,1]
         aList = [1,2,3,1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2]       
+        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2]
+    
+    elif K == 3:
+        slist = [1,1,1]
+        aList = [1,2,3]
+        bList = [1,1,1]
+    elif K == 6:
+        slist = [1,1,1,1,1,1]
+        aList = [1,2,3,1,2,3]
+        bList = [1,1,1,2,2,2]
+        ##incl a=0
+    elif K == 4:
+        slist = [1,1,1,1]
+        aList = [0,1,2,3]
+        bList = [1,1,1,1]
+    elif K == 8:
+        slist = [1,1,1,1,1,1,1,1]
+        aList = [0,1,2,3,0,1,2,3]
+        bList = [1,1,1,1,2,2,2,2]
     
     ##subset list
     subset = iniSubset(Nqb)
