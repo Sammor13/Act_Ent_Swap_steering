@@ -2,3 +2,10 @@
 *.pdf
 *.svg
 *.png
+avg_global_cost
+avg_local_cost
+avgPur
+coupl_list
+psi_List
+success_steps
+xi_eta_List

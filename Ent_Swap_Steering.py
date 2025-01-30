@@ -4,7 +4,7 @@
 Created on Wed Jul 28 14:40:09 2021
 
 @author: Samuel Morales
-TODO: save traj, vectorize cost function calculation
+TODO: save traj, vectorize cost function calculation, exact expressions
 """
  
 import numpy as np
@@ -164,7 +164,6 @@ def main():
     axins.locator_params(axis='x', nbins=4)
     axins.locator_params(axis='y', nbins=3)
     
-    #avgCloc = [np.mean(costFDistr[:,i]) for i in range(int(N/Nst)+1)]
     avg_local_C = np.mean(local_C_Distr, axis=0)
     np.savetxt('avg_local_cost', avg_local_C)
     axins.plot(np.arange(0,N+1,Nst), avg_local_C, 'k', label=r'average Cloc', linewidth=2)
