@@ -43,7 +43,7 @@ def main():
     plist.append(1-sum(plist))
     
     ##couplings, target fidelity Fstar
-    K = 9                                               ##nr of couplings: 3, 4, 6, 8, 9, 10, 11, 12, 14
+    K = 9                                               ##nr of couplings: 3, 4, 6, 7, 8, 9, 10, 11, 12, 14
     Fstar = 0.8                                         ##target fidelity
     epsilon = 1-Fstar**2                                ##stop threshold for cost function
     params = [N, Nst, DeltaT, J[:Nqb], epsilon, K]
@@ -281,6 +281,10 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
         #slist = [1,1,1,1,1,1]
         #aList = [1,2,3,1,2,3]
         #bList = [1,1,1,3,3,3]
+    elif K == 7:        ##beta=x,z; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1]
+        aList = [0,1,2,3,1,2,3]
+        bList = [1,1,1,1,3,3,3]
     elif K == 8:        ##beta=x,y; alpha=0,x,y,z; s=+
         slist = [1,1,1,1,1,1,1,1]
         aList = [0,1,2,3,0,1,2,3]
@@ -294,14 +298,14 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
         #slist = [1,1,1,1,1,1,1,1,1]
         #aList = [1,2,3,1,2,3,1,2,3]
         #bList = [1,1,1,2,2,2,3,3,3]
-    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1,1,1,1,1]
-        aList = [1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,1,1,1,1,2,2,2,2]
     elif K == 10:        ##beta=x,z; alpha=0,x,y,z; s=+/-
         slist = [1,1,1,-1,-1,-1,1,1,1,1]
         aList = [1,2,3,1,2,3,0,1,2,3]
         bList = [3,3,3,3,3,3,1,1,1,1]
+    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1,1,1,1,1]
+        aList = [1,2,3,0,1,2,3,0,1,2,3]
+        bList = [3,3,3,1,1,1,1,2,2,2,2]
     elif K == 12:        ##beta=x,y,z; alpha=x,y,z; s=+/-
         slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1]
         aList = [1,2,3,1,2,3,1,2,3,1,2,3]
@@ -578,6 +582,10 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
         #slist = [1,1,1,1,1,1]
         #aList = [1,2,3,1,2,3]
         #bList = [1,1,1,3,3,3]
+    elif K == 7:        ##beta=x,z; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1]
+        aList = [0,1,2,3,1,2,3]
+        bList = [1,1,1,1,3,3,3]
     elif K == 8:        ##beta=x,y; alpha=0,x,y,z; s=+
         slist = [1,1,1,1,1,1,1,1]
         aList = [0,1,2,3,0,1,2,3]
@@ -591,14 +599,14 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
         #slist = [1,1,1,1,1,1,1,1,1]
         #aList = [1,2,3,1,2,3,1,2,3]
         #bList = [1,1,1,2,2,2,3,3,3]
-    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1,1,1,1,1]
-        aList = [1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,1,1,1,1,2,2,2,2]
     elif K == 10:        ##beta=x,z; alpha=0,x,y,z; s=+/-
         slist = [1,1,1,-1,-1,-1,1,1,1,1]
         aList = [1,2,3,1,2,3,0,1,2,3]
         bList = [3,3,3,3,3,3,1,1,1,1]
+    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1,1,1,1,1]
+        aList = [1,2,3,0,1,2,3,0,1,2,3]
+        bList = [3,3,3,1,1,1,1,2,2,2,2]
     elif K == 12:        ##beta=x,y,z; alpha=x,y,z; s=+/-
         slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1]
         aList = [1,2,3,1,2,3,1,2,3,1,2,3]
