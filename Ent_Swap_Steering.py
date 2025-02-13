@@ -4,7 +4,9 @@
 Created on Wed Jul 28 14:40:09 2021
 
 @author: Samuel Morales
-TODO: save traj, vectorize cost function calculation, exact expressions
+TODO: save traj, vectorize cost function calculation, exact expressions,
+    dR2 only for b1=b2=x/y otherwise dR*Rf?/create C[m]=(S[m]-Starg[m])*dR[m]+dR2[m],
+    include p=0 speed up
 """
  
 import numpy as np
@@ -264,56 +266,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
         S_list[0] = qt.entropy_vn(psi0.ptrace((0)))
     
     ##coupling lists
-    if K == 3:          ##beta=x; alpha=x,y,z; s=+
-        slist = [1,1,1]
-        aList = [1,2,3]
-        bList = [1,1,1]
-    elif K == 4:        ##beta=x; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1]
-        aList = [0,1,2,3]
-        bList = [1,1,1,1]
-    elif K == 6:        ##beta=x,y; alpha=x,y,z; s=+
-        slist = [1,1,1,1,1,1]
-        aList = [1,2,3,1,2,3]
-        bList = [1,1,1,2,2,2]
-        
-        ##beta=x,z; alpha=x,y,z; s=+
-        #slist = [1,1,1,1,1,1]
-        #aList = [1,2,3,1,2,3]
-        #bList = [1,1,1,3,3,3]
-    elif K == 7:        ##beta=x,z; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1]
-        aList = [0,1,2,3,1,2,3]
-        bList = [1,1,1,1,3,3,3]
-    elif K == 8:        ##beta=x,y; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1,1]
-        aList = [0,1,2,3,0,1,2,3]
-        bList = [1,1,1,1,2,2,2,2]
-    elif K == 9:        ##beta=x,z; alpha=x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1]
-        aList = [1,2,3,1,2,3,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1]
-        
-        ##beta=x,y,z; alpha=x,y,z; s=+
-        #slist = [1,1,1,1,1,1,1,1,1]
-        #aList = [1,2,3,1,2,3,1,2,3]
-        #bList = [1,1,1,2,2,2,3,3,3]
-    elif K == 10:        ##beta=x,z; alpha=0,x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1,1]
-        aList = [1,2,3,1,2,3,0,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,1]
-    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1,1,1,1,1]
-        aList = [1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,1,1,1,1,2,2,2,2]
-    elif K == 12:        ##beta=x,y,z; alpha=x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1]
-        aList = [1,2,3,1,2,3,1,2,3,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,2,2,2]
-    elif K == 14:        ##beta=x,y,z; alpha=0,x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1,1,1]
-        aList = [1,2,3,1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2]
+    slist, aList, bList = coupl_list(K)
         
     ##operator list
     pauliPlaqList = plaqSlist(Nqb)
@@ -328,6 +281,8 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     
     ##subset list
     subset = iniSubset(Nqb)
+    #subset = iniLocalSubset(Nqb)
+    #subset = iniLocalSubsetPeriodic(Nqb)
     
     ##Initial cost function values
     global_C[0] = np.linalg.norm(Spsi-Starg)**2/2**(Nqb+1)
@@ -365,7 +320,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             G1, G2 = Gamma[n1], Gamma[n2]
             
             ##Active decision making
-            deltaC = expCostF(Spsi, Starg, J, Gamma, DeltaT, pList, n1, n2, Nqb, K)
+            deltaC = expCostF(Spsi, Starg, J, Gamma, DeltaT, pList, n1, n2, Nqb, K, subset)
         
             klis = int(rng.choice(np.where(deltaC == np.nanmin(deltaC))[0]))
             k_List[(i-1)*int(Nqb/2)+nPair] = klis
@@ -459,13 +414,84 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     else:
         return k_List, xi_eta_List, global_C, local_C, psi_List, success_Step
 
-
 #produce subset lists
 def iniSubset(N):
-    subset = []
-    for i in range(1,N):
-        subset.append(list(itertools.combinations(range(N),i)))
+    #subset = []
+    #for i in range(1,N):
+    #    subset.append(list(itertools.combinations(range(N),i)))
+    subset = [list(itertools.combinations(range(N),i)) for i in range(1,N)]
     return subset
+
+def iniLocalSubset(N):  ##open boundary
+    #subset = []
+    #for i in range(1,N):
+    #    sub = [range(j,j+i) for j in range(N-i+1)] 
+    #    subset.append(sub)
+    subset = [[range(j,j+i) for j in range(N-i+1)] for i in range(1,N)]
+    return subset
+
+def iniLocalSubsetPeriodic(N):  ##periodic boundary
+    #subset = []
+    #for i in range(1,N):
+    #    sub = [np.arange(j,j+i)%N for j in range(N)] 
+    #    subset.append(sub)
+    subset = [[np.arange(j,j+i)%N for j in range(N)] for i in range(1,N)]
+    return subset
+
+##coupling list
+def coupl_list(K):
+    if K == 3:          ##beta=x; alpha=x,y,z; s=+
+        slist = [1,1,1]
+        aList = [1,2,3]
+        bList = [1,1,1]
+    elif K == 4:        ##beta=x; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1]
+        aList = [0,1,2,3]
+        bList = [1,1,1,1]
+    elif K == 6:        ##beta=x,y; alpha=x,y,z; s=+
+        slist = [1,1,1,1,1,1]
+        aList = [1,2,3,1,2,3]
+        bList = [1,1,1,2,2,2]
+        
+        ##beta=x,z; alpha=x,y,z; s=+
+        #slist = [1,1,1,1,1,1]
+        #aList = [1,2,3,1,2,3]
+        #bList = [1,1,1,3,3,3]
+    elif K == 7:        ##beta=x,z; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1]
+        aList = [0,1,2,3,1,2,3]
+        bList = [1,1,1,1,3,3,3]
+    elif K == 8:        ##beta=x,y; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1,1]
+        aList = [0,1,2,3,0,1,2,3]
+        bList = [1,1,1,1,2,2,2,2]
+    elif K == 9:        ##beta=x,z; alpha=x,y,z; s=+/-
+        slist = [1,1,1,-1,-1,-1,1,1,1]
+        aList = [1,2,3,1,2,3,1,2,3]
+        bList = [3,3,3,3,3,3,1,1,1]
+        
+        ##beta=x,y,z; alpha=x,y,z; s=+
+        #slist = [1,1,1,1,1,1,1,1,1]
+        #aList = [1,2,3,1,2,3,1,2,3]
+        #bList = [1,1,1,2,2,2,3,3,3]
+    elif K == 10:        ##beta=x,z; alpha=0,x,y,z; s=+/-
+        slist = [1,1,1,-1,-1,-1,1,1,1,1]
+        aList = [1,2,3,1,2,3,0,1,2,3]
+        bList = [3,3,3,3,3,3,1,1,1,1]
+    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
+        slist = [1,1,1,1,1,1,1,1,1,1,1]
+        aList = [1,2,3,0,1,2,3,0,1,2,3]
+        bList = [3,3,3,1,1,1,1,2,2,2,2]
+    elif K == 12:        ##beta=x,y,z; alpha=x,y,z; s=+/-
+        slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1]
+        aList = [1,2,3,1,2,3,1,2,3,1,2,3]
+        bList = [3,3,3,3,3,3,1,1,1,2,2,2]
+    elif K == 14:        ##beta=x,y,z; alpha=0,x,y,z; s=+/-
+        slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1,1,1]
+        aList = [1,2,3,1,2,3,0,1,2,3,0,1,2,3]
+        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2]
+    
+    return slist, aList, bList
 
 ##Time evolution solver  
 ##Entanglement swapping for beta1=beta2=x/y
@@ -528,8 +554,9 @@ def schroesol(psi, deltaT, H):
 
 ###plaquette operators
 def plaqS(ind):
-    pauliLs = [s[i] for i in ind]
-    return qt.tensor(pauliLs)
+    #pauliLs = [s[i] for i in ind]
+    #return qt.tensor(pauliLs)
+    return qt.tensor([s[i] for i in ind])
     
 def plaqSlist(Nqb):
     return  [plaqS([int(i/(4**j)%4) for j in range(Nqb)]) for i in range(4**Nqb)]
@@ -558,66 +585,14 @@ def costFunc(S, Starg, i, Nqb, subset):
     return costf
 
 ##expected cost function change
-def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
+def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
     JA = J[nA]
     JB = J[nB]
     GA = Gamma[nA]
     GB = Gamma[nB]
     
     ##coupling lists
-    if K == 3:          ##beta=x; alpha=x,y,z; s=+
-        slist = [1,1,1]
-        aList = [1,2,3]
-        bList = [1,1,1]
-    elif K == 4:        ##beta=x; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1]
-        aList = [0,1,2,3]
-        bList = [1,1,1,1]
-    elif K == 6:        ##beta=x,y; alpha=x,y,z; s=+
-        slist = [1,1,1,1,1,1]
-        aList = [1,2,3,1,2,3]
-        bList = [1,1,1,2,2,2]
-        
-        ##beta=x,z; alpha=x,y,z; s=+
-        #slist = [1,1,1,1,1,1]
-        #aList = [1,2,3,1,2,3]
-        #bList = [1,1,1,3,3,3]
-    elif K == 7:        ##beta=x,z; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1]
-        aList = [0,1,2,3,1,2,3]
-        bList = [1,1,1,1,3,3,3]
-    elif K == 8:        ##beta=x,y; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1,1]
-        aList = [0,1,2,3,0,1,2,3]
-        bList = [1,1,1,1,2,2,2,2]
-    elif K == 9:        ##beta=x,z; alpha=x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1]
-        aList = [1,2,3,1,2,3,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1]
-        
-        ##beta=x,y,z; alpha=x,y,z; s=+
-        #slist = [1,1,1,1,1,1,1,1,1]
-        #aList = [1,2,3,1,2,3,1,2,3]
-        #bList = [1,1,1,2,2,2,3,3,3]
-    elif K == 10:        ##beta=x,z; alpha=0,x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1,1]
-        aList = [1,2,3,1,2,3,0,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,1]
-    elif K == 11:        ##beta=x,y,z; alpha=0,x,y,z; s=+
-        slist = [1,1,1,1,1,1,1,1,1,1,1]
-        aList = [1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,1,1,1,1,2,2,2,2]
-    elif K == 12:        ##beta=x,y,z; alpha=x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1]
-        aList = [1,2,3,1,2,3,1,2,3,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,2,2,2]
-    elif K == 14:        ##beta=x,y,z; alpha=0,x,y,z; s=+/-
-        slist = [1,1,1,-1,-1,-1,1,1,1,1,1,1,1,1]
-        aList = [1,2,3,1,2,3,0,1,2,3,0,1,2,3]
-        bList = [3,3,3,3,3,3,1,1,1,1,2,2,2,2]
-        
-    ##subset list
-    subset = iniSubset(Nqb)
+    slist, aList, bList = coupl_list(K)
     
     ##expected cost func change
     costf=np.zeros(K**2)    
@@ -681,6 +656,7 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
         avcp += rtm1
             
         dR, dR2 = np.zeros(4**Nqb), np.zeros(4**Nqb)
+        dC = np.zeros(4**Nqb)
         
         ##calculate <<dR>> and <<dR^2>>
         for l in range(4**Nqb):
@@ -728,6 +704,8 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
                     dR2[l] = deltaT*(rtm2+rtm3)**2/avcp
                 else:
                     dR2[l] = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
+            
+            dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
         
         ##assemble
         for l in range(Nqb-1):
@@ -739,7 +717,8 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K):
                         if i not in s and int(m/(4**i)%4)>0:
                             chk +=1
                     if chk == 0:
-                        deltaf+=(S[m]-Starg[m])*dR[m]+dR2[m]
+                        #deltaf += (S[m]-Starg[m])*dR[m]+dR2[m]
+                        deltaf += dC[m]
             costf[j] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
         costf[j] += sum(-p[-1]*Starg*dR/2**Nqb)
         
