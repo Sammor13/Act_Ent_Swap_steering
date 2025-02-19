@@ -4,9 +4,7 @@
 Created on Wed Jul 28 14:40:09 2021
 
 @author: Samuel Morales
-TODO: save traj, vectorize cost function calculation, exact expressions,
-    dR2 only for b1=b2=x/y otherwise dR*Rf?/create C[m]=(S[m]-Starg[m])*dR[m]+dR2[m],
-    include p=0 speed up
+TODO: save traj, vectorize cost function calculation, exact expressions
 """
  
 import numpy as np
@@ -41,7 +39,7 @@ def main():
     Nst = 1                                             ##every Nst´th step is saved
     
     ##cost fct probabilities
-    plist =[9*10**(-i) for i in range(1,Nqb)]
+    plist = [9*10**(-i) for i in range(1,Nqb)]
     plist.append(1-sum(plist))
     
     ##couplings, target fidelity Fstar
@@ -344,38 +342,18 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             sig2 = pauliPlaqList[alpha2*4**n2]
             
             ##Time step
-            #beta1=beta2=z
-            if beta1==3 and beta2==3:
-                xi_eta_List[i-1] = (0,(-1)**int(2*rng.random()))
-                H = s1*J1*sig1+s2*J2*sig2
-                psi = schroesol(psi, DeltaT, H)
-            
-            #beta1=z, beta2!=z
-            elif beta1==3:
-                c_op, H = np.sqrt(G2)*sig2, s1*J1*sig1
-                psi, xi = unitsol(psi, DeltaT, H, c_op, G2*DeltaT)
-                xi_eta_List[i-1] = (xi,(-1)**int(2*rng.random()))
-            
-            #beta1!=z, beta2=z
-            elif beta2==3:
-                c_op, H = np.sqrt(G1)*sig1, s2*J2*sig2
-                psi, xi = unitsol(psi, DeltaT, H, c_op, G1*DeltaT)
-                xi_eta_List[i-1] = (xi,(-1)**int(2*rng.random()))
-            
+            #beta1=z or beta2=z or (beta1=x, beta2=y) or (beta1=y, beta2=x)
+            if beta1==3 or beta2==3 or beta1!=beta2:
+                eta = (-1)**int(2*rng.random())
+                H = (beta1==3)*s1*J1*sig1+(beta2==3)*s2*J2*sig2+(beta1!=3)*(beta2!=3)*eta*np.sqrt(G1*G2)*sig1*sig2
+                c_op = (beta1!=3)*np.sqrt(G1)*sig1+(1-2*(beta1==2))*eta*1j*(beta2!=3)*np.sqrt(G2)*sig2
+                psi, xi = unitsol(psi, DeltaT, H, c_op, ((beta1!=3)*G1+(beta2!=3)*G2)*DeltaT)
+                xi_eta_List[i-1] = (xi, eta)
+                
             #beta1=beta2=x/y  
             elif beta1==beta2:
                 c_op = [np.sqrt(G1/2)*sig1+np.sqrt(G2/2)*sig2, np.sqrt(G1/2)*sig1-np.sqrt(G2/2)*sig2]
-                psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)               
-            
-            #(beta1=x, beta2=y) or (beta1=y, beta2=x)
-            else:
-                eta = (-1)**int(2*rng.random())
-                if beta1==1:
-                    c_op, H = np.sqrt(G1)*sig1+eta*1j*np.sqrt(G2)*sig2, eta*np.sqrt(G1*G2)*sig1*sig2
-                elif beta1==2:
-                    c_op, H = np.sqrt(G1)*sig1-eta*1j*np.sqrt(G2)*sig2, eta*np.sqrt(G1*G2)*sig1*sig2
-                psi, xi = unitsol(psi, DeltaT, H, c_op, (G1+G2)*DeltaT)
-                xi_eta_List[i-1] = (xi, eta)
+                psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)
                 
         ##Update values   
         Spsi = qt.expect(pauliPlaqList,psi)    
@@ -416,25 +394,14 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
 
 #produce subset lists
 def iniSubset(N):
-    #subset = []
-    #for i in range(1,N):
-    #    subset.append(list(itertools.combinations(range(N),i)))
     subset = [list(itertools.combinations(range(N),i)) for i in range(1,N)]
     return subset
 
 def iniLocalSubset(N):  ##open boundary
-    #subset = []
-    #for i in range(1,N):
-    #    sub = [range(j,j+i) for j in range(N-i+1)] 
-    #    subset.append(sub)
     subset = [[range(j,j+i) for j in range(N-i+1)] for i in range(1,N)]
     return subset
 
 def iniLocalSubsetPeriodic(N):  ##periodic boundary
-    #subset = []
-    #for i in range(1,N):
-    #    sub = [np.arange(j,j+i)%N for j in range(N)] 
-    #    subset.append(sub)
     subset = [[np.arange(j,j+i)%N for j in range(N)] for i in range(1,N)]
     return subset
 
@@ -518,18 +485,7 @@ def ent_swap_sol(psi, deltaT, c_op):
       
 ##Unitary dynamics for (beta1,beta2)=(x,y) or (x/y,z) and vice-versa
 def unitsol(psi, deltaT, H, c_op, P):
-    '''return normalized state conditioned on measurement outcome
-    for single, unitary jump operator
-    '''
-    #random number generator
-    rng = np.random.default_rng()
-    if rng.random() >= P:
-        return ((1-1j*deltaT*H-P/2)*psi).unit(), 0
-    else:
-        return (c_op*psi).unit(), 1
-
-def schroesol(psi, deltaT, H):
-    '''Single step Hamiltonian evolution
+    '''State evolution for single, unitary jump operator
     Parameters
     ----------
 
@@ -538,6 +494,9 @@ def schroesol(psi, deltaT, H):
 
     psi: :class:`qutip.Qobj`
         initial state vector (ket)
+    
+    c_op: :class:`qutip.Qobj`
+        unitary jump operator
         
     deltaT: (float)
         time step length
@@ -549,13 +508,15 @@ def schroesol(psi, deltaT, H):
 
         Normalized time-evolved state (ket)
     '''
-    
-    return ((1-1j*deltaT*H)*psi).unit()
+    #random number generator
+    rng = np.random.default_rng()
+    if rng.random() >= P:
+        return ((1-1j*deltaT*H-P/2)*psi).unit(), 0
+    else:
+        return (c_op*psi).unit(), 1
 
 ###plaquette operators
 def plaqS(ind):
-    #pauliLs = [s[i] for i in ind]
-    #return qt.tensor(pauliLs)
     return qt.tensor([s[i] for i in ind])
     
 def plaqSlist(Nqb):
@@ -606,6 +567,36 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
         aB = aList[int(j/K)]
         bA = bList[j%K]
         bB = bList[int(j/K)]
+        
+       # if bA == 2:
+       #     ##bA,bB = y,x:
+       #     if bB == 1:
+       #         for i in range(j):
+       #             if bList[i%K] == 1 and bList[int(i/K)] == 2 and aA == aList[i%K] and aB == aList[int(i/K)]:
+       #                 costf[j] = costf[i]
+       #                 break
+       #         continue
+       #     ##bA,bB = y,y:
+       #     if bB == 2:
+       #         for i in range(j):
+       #             if bList[i%K] == 1 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
+       #                 costf[j] = costf[i]
+       #                 break
+       #         continue
+       #     ##bA,bB = y,z:
+       #     if bB == 3:
+       #         for i in range(j):
+       #             if bList[i%K] == 1 and bList[int(i/K)] == 3 and aA == aList[i%K] and aB == aList[int(i/K)]:
+       #                 costf[j] = costf[i]
+       #                 break
+       #         continue
+       # ##bA,bB = z,y:
+       # elif bA == 3 and bB == 2:
+       #     for i in range(j):
+       #         if bList[i%K] == 3 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
+       #             costf[j] = costf[i]
+       #             break
+       #     continue
         
         ##correlator
         Q = S[aA*4**nA+aB*4**nB]
@@ -706,10 +697,18 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                     dR2[l] = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
             
             dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
+            
+           # #if bA == bB and bA == 1:
+           # if bA != 3 and bB != 3:
+           #     dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
+           # else:
+           #     dC[l] = -Starg[l]*dR[l]
         
         ##assemble
         for l in range(Nqb-1):
-            deltaf = 0       
+            if p[l] == 0:
+                continue
+            deltaf = 0
             for s in subset[l]:
                 for m in range(4**Nqb):
                     chk = 0
