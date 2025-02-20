@@ -568,35 +568,36 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
         bA = bList[j%K]
         bB = bList[int(j/K)]
         
-       # if bA == 2:
-       #     ##bA,bB = y,x:
-       #     if bB == 1:
-       #         for i in range(j):
-       #             if bList[i%K] == 1 and bList[int(i/K)] == 2 and aA == aList[i%K] and aB == aList[int(i/K)]:
-       #                 costf[j] = costf[i]
-       #                 break
-       #         continue
-       #     ##bA,bB = y,y:
-       #     if bB == 2:
-       #         for i in range(j):
-       #             if bList[i%K] == 1 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
-       #                 costf[j] = costf[i]
-       #                 break
-       #         continue
-       #     ##bA,bB = y,z:
-       #     if bB == 3:
-       #         for i in range(j):
-       #             if bList[i%K] == 1 and bList[int(i/K)] == 3 and aA == aList[i%K] and aB == aList[int(i/K)]:
-       #                 costf[j] = costf[i]
-       #                 break
-       #         continue
-       # ##bA,bB = z,y:
-       # elif bA == 3 and bB == 2:
-       #     for i in range(j):
-       #         if bList[i%K] == 3 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
-       #             costf[j] = costf[i]
-       #             break
-       #     continue
+        ##different couplings with same dC
+        if bA == 2:
+            ##bA,bB = y,x:
+            if bB == 1:
+                for i in range(j):
+                    if bList[i%K] == 1 and bList[int(i/K)] == 2 and aA == aList[i%K] and aB == aList[int(i/K)]:
+                        costf[j] = costf[i]
+                        break
+                continue
+            ##bA,bB = y,y:
+            if bB == 2:
+                for i in range(j):
+                    if bList[i%K] == 1 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
+                        costf[j] = costf[i]
+                        break
+                continue
+            ##bA,bB = y,z:
+            if bB == 3:
+                for i in range(j):
+                    if bList[i%K] == 1 and bList[int(i/K)] == 3 and aA == aList[i%K] and aB == aList[int(i/K)]:
+                        costf[j] = costf[i]
+                        break
+                continue
+        ##bA,bB = z,y:
+        elif bA == 3 and bB == 2:
+            for i in range(j):
+                if bList[i%K] == 3 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
+                    costf[j] = costf[i]
+                    break
+            continue
         
         ##correlator
         Q = S[aA*4**nA+aB*4**nB]
@@ -651,6 +652,10 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
         
         ##calculate <<dR>> and <<dR^2>>
         for l in range(4**Nqb):
+            ##skip terms that do not contribute to dC
+            if (bA == 3 or bB == 3) and Starg[l]==0:
+                continue
+                
             ##<<dR>> terms
             muA = int(l/(4**nA)%4)
             muB = int(l/(4**nB)%4)
@@ -684,7 +689,8 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
             dR[l] = 2*deltaT*rtm1
         
             ##<<dR^2>>/2 terms
-            if bA != 3 or bB != 3:
+            #if bA != 3 or bB != 3:
+            if bA != 3 and bB != 3:
                 rtm3 = 0
                 if bA == bB:
                     rtm3 = np.sqrt(GA*GB)*(F[l]-Q*S[l])
@@ -696,13 +702,13 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                 else:
                     dR2[l] = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
             
-            dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
+           # dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
             
-           # #if bA == bB and bA == 1:
-           # if bA != 3 and bB != 3:
-           #     dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
-           # else:
-           #     dC[l] = -Starg[l]*dR[l]
+            #if bA == bB and bA == 1:
+            if bA != 3 and bB != 3:
+                dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
+            else:
+                dC[l] = -Starg[l]*dR[l]
         
         ##assemble
         for l in range(Nqb-1):
