@@ -568,7 +568,7 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
         bA = bList[j%K]
         bB = bList[int(j/K)]
         
-        ##different couplings with same dC
+        ##different couplings with same dC for bA=y
         if bA == 2:
             ##bA,bB = y,x:
             if bB == 1:
@@ -599,116 +599,7 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                     break
             continue
         
-        ##correlator
-        Q = S[aA*4**nA+aB*4**nB]
-        
-        ##F tensor
-        F = np.zeros(4**Nqb)
-        if aA==aB and aA==0:
-            F = S
-        else:
-            for l in range(4**Nqb):
-                muA = int(l/(4**nA)%4)
-                muB = int(l/(4**nB)%4)
-                if muA == 0 and muB == 0:
-                    F[l] = S[l+aA*4**nA+aB*4**nB]
-                elif muA == 0 and muB == aB:
-                    F[l] = S[l+aA*4**nA-aB*4**nB]
-                elif muA == aA and muB == 0:
-                    F[l] = S[l-aA*4**nA+aB*4**nB]
-                elif muA == aA and muB == aB:
-                    F[l] = S[l-aA*4**nA-aB*4**nB]
-                
-                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
-                    rtm1 = 0
-                    for k1 in range(1,4):
-                        if k1 != aA and k1 != muA:
-                            for k2 in range(1,4):
-                                if k2 != aB and k2 != muB:
-                                    rtm1 += LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2)*S[l+(k1-muA)*4**nA+(k2-muB)*4**nB]
-                    F[l] = rtm1
-                    
-                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
-                    rtm1 = 0
-                    for k2 in range(1,4):
-                        if k2 != aB and k2 != muB:
-                            rtm1 += LeviCivita(aB,muB,k2)*S[l+(k2-muB)*4**nB]
-                    F[l] = rtm1
-                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
-                    rtm1 = 0
-                    for k1 in range(1,4):
-                        if k1 != aA and k1 != muA:
-                            rtm1 += LeviCivita(aA,muA,k1)*S[l+(k1-muA)*4**nA]
-                    F[l] = rtm1
-                
-        ##<c_eta^\dagger c_eta>
-        avcp = (bA != 3)*GA+(bB != 3)*GB
-        rtm1 = (bA == bB)*(bA != 3)*2*np.sqrt(GA*GB)*Q
-        avcm = avcp-rtm1
-        avcp += rtm1
-            
-        dR, dR2 = np.zeros(4**Nqb), np.zeros(4**Nqb)
-        dC = np.zeros(4**Nqb)
-        
-        ##calculate <<dR>> and <<dR^2>>
-        for l in range(4**Nqb):
-            ##skip terms that do not contribute to dC
-            if (bA == 3 or bB == 3) and Starg[l]==0:
-                continue
-                
-            ##<<dR>> terms
-            muA = int(l/(4**nA)%4)
-            muB = int(l/(4**nB)%4)
-            
-            rtm1 = 0
-            rtm2 = 0
-            ##A terms
-            if muA != aA and muA != 0 and aA!=0:
-                if bA !=3:
-                    rtm1 -= GA*S[l]
-                    rtm2 -= GA*S[l]
-                else:
-                    rtm4 = 0
-                    for k in range(1,4):
-                        if k != muA and k != aA:
-                            rtm4 += LeviCivita(aA,k,muA)*S[l+(k-muA)*4**nA]
-                    rtm1 += sA*JA*rtm4
-            
-            ##B terms
-            if muB != aB and muB !=0 and aB!=0:
-                if bB !=3:
-                    rtm1 -= GB*S[l]
-                    rtm2 -= GB*S[l]
-                else:
-                    rtm4 = 0
-                    for k in range(1,4):
-                        if k != muB and k != aB:
-                            rtm4 += LeviCivita(aB,k,muB)*S[l+(k-muB)*4**nB]
-                    rtm1 += sB*JB*rtm4
-                    
-            dR[l] = 2*deltaT*rtm1
-        
-            ##<<dR^2>>/2 terms
-            #if bA != 3 or bB != 3:
-            if bA != 3 and bB != 3:
-                rtm3 = 0
-                if bA == bB:
-                    rtm3 = np.sqrt(GA*GB)*(F[l]-Q*S[l])
-                
-                if avcp == 0:
-                    dR2[l] = deltaT*(rtm2-rtm3)**2/avcm
-                elif avcm == 0:
-                    dR2[l] = deltaT*(rtm2+rtm3)**2/avcp
-                else:
-                    dR2[l] = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
-            
-           # dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
-            
-            #if bA == bB and bA == 1:
-            if bA != 3 and bB != 3:
-                dC[l] = (S[l]-Starg[l])*dR[l]+dR2[l]
-            else:
-                dC[l] = -Starg[l]*dR[l]
+        dC = dC_tensor(S, Starg, deltaT, (sA, JA, GA), (sB, JB, GB), (aA, bA, nA), (aB, bB, nB), Nqb)
         
         ##assemble
         for l in range(Nqb-1):
@@ -722,12 +613,139 @@ def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                         if i not in s and int(m/(4**i)%4)>0:
                             chk +=1
                     if chk == 0:
-                        #deltaf += (S[m]-Starg[m])*dR[m]+dR2[m]
                         deltaf += dC[m]
             costf[j] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
-        costf[j] += sum(-p[-1]*Starg*dR/2**Nqb)
+            
+        costf[j] += p[-1]*sum(dC)/2**Nqb
         
     return costf
+
+##dC tensor:
+def dC_tensor(S, Starg, deltaT, A, B, kA, kB, Nqb):
+    sA, JA, GA = A
+    sB, JB, GB = B
+    
+    aA, bA, nA = kA
+    aB, bB, nB = kB
+    
+    Q = S[aA*4**nA+aB*4**nB]
+    
+    ##F tensor
+    F = F_tensor(S, Starg, (aA, bA, nA), (aB, bB, nB), Nqb)
+    
+    ##<c_eta^\dagger c_eta>
+    avcp = (bA != 3)*GA+(bB != 3)*GB
+    rtm1 = (bA == bB)*(bA != 3)*2*np.sqrt(GA*GB)*Q
+    avcm = avcp-rtm1
+    avcp += rtm1
+        
+    dC = np.zeros(4**Nqb)
+    
+    ##calculate <<dR>> and <<dR^2>>
+    for l in range(4**Nqb):
+        ##skip terms that do not contribute to dC
+        if (bA == 3 or bB == 3) and Starg[l]==0:
+            continue
+            
+        ##sigma_muA, sigma_muB
+        muA = int(l/(4**nA)%4)
+        muB = int(l/(4**nB)%4)
+        
+        ##<<dR>> terms
+        rtm1 = 0
+        rtm2 = 0
+        ##A terms
+        if muA != aA and muA != 0 and aA!=0:
+            if bA !=3:
+                rtm1 -= GA*S[l]
+                rtm2 -= GA*S[l]
+            else:
+                rtm4 = 0
+                for k in range(1,4):
+                    if k != muA and k != aA:
+                        rtm4 += LeviCivita(aA,k,muA)*S[l+(k-muA)*4**nA]
+                rtm1 += sA*JA*rtm4
+        
+        ##B terms
+        if muB != aB and muB !=0 and aB!=0:
+            if bB !=3:
+                rtm1 -= GB*S[l]
+                rtm2 -= GB*S[l]
+            else:
+                rtm4 = 0
+                for k in range(1,4):
+                    if k != muB and k != aB:
+                        rtm4 += LeviCivita(aB,k,muB)*S[l+(k-muB)*4**nB]
+                rtm1 += sB*JB*rtm4
+                
+        dR = 2*deltaT*rtm1
+    
+        ##<<dR^2>>/2 terms
+        if bA != 3 and bB != 3:
+            rtm3 = 0
+            if bA == bB:
+                rtm3 = np.sqrt(GA*GB)*(F[l]-Q*S[l])
+            
+            if avcp == 0:
+                dR2 = deltaT*(rtm2-rtm3)**2/avcm
+            elif avcm == 0:
+                dR2 = deltaT*(rtm2+rtm3)**2/avcp
+            else:
+                dR2 = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
+        
+        #for bA=z or bB=z: S[l]*dR+dR2=0
+        if bA != 3 and bB != 3:
+            dC[l] = (S[l]-Starg[l])*dR+dR2
+        else:
+            dC[l] = -Starg[l]*dR
+    
+    return dC
+
+##F tensor
+def F_tensor(S, Starg, A, B, Nqb):
+    aA, bA, nA = A
+    aB, bB, nB = B
+    
+    F = np.zeros(4**Nqb)
+    if aA==aB and aA==0:
+        F = S
+    else:
+        for l in range(4**Nqb):
+            if (bA == 3 or bB == 3) and Starg[l]==0:
+                continue
+            muA = int(l/(4**nA)%4)
+            muB = int(l/(4**nB)%4)
+            if muA == 0 and muB == 0:
+                F[l] = S[l+aA*4**nA+aB*4**nB]
+            elif muA == 0 and muB == aB:
+                F[l] = S[l+aA*4**nA-aB*4**nB]
+            elif muA == aA and muB == 0:
+                F[l] = S[l-aA*4**nA+aB*4**nB]
+            elif muA == aA and muB == aB:
+                F[l] = S[l-aA*4**nA-aB*4**nB]
+            
+            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
+                rtm1 = 0
+                for k1 in range(1,4):
+                    if k1 != aA and k1 != muA:
+                        for k2 in range(1,4):
+                            if k2 != aB and k2 != muB:
+                                rtm1 += LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2)*S[l+(k1-muA)*4**nA+(k2-muB)*4**nB]
+                F[l] = rtm1
+                
+            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
+                rtm1 = 0
+                for k2 in range(1,4):
+                    if k2 != aB and k2 != muB:
+                        rtm1 += LeviCivita(aB,muB,k2)*S[l+(k2-muB)*4**nB]
+                F[l] = rtm1
+            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
+                rtm1 = 0
+                for k1 in range(1,4):
+                    if k1 != aA and k1 != muA:
+                        rtm1 += LeviCivita(aA,muA,k1)*S[l+(k1-muA)*4**nA]
+                F[l] = rtm1
+    return F
 
 ##run main program
 if __name__ == '__main__':
