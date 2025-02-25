@@ -687,69 +687,6 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     else:
         dC = -Starg*dR
         
-    '''            
-    ##calculate <<dR>> and <<dR^2>>
-    for index in np.ndindex(*([4]*Nqb)):    
-        ##skip terms that do not contribute to dC
-        if (bA == 3 or bB == 3) and Starg[index]==0:
-            continue
-            
-        ##sigma_muA, sigma_muB
-        muA = index[nA]
-        muB = index[nB]
-        
-        ##<<dR>> terms
-        rtm1 = 0
-        rtm2 = 0
-        ##A terms
-        if muA != aA and muA != 0 and aA!=0:
-            if bA !=3:
-                rtm1 -= GA*S[index]
-                rtm2 -= GA*S[index]
-            else:
-                rtm4 = 0
-                for k in range(1,4):
-                    if k != muA and k != aA:
-                        Sindex = list(index)
-                        Sindex[nA] = k
-                        rtm4 += LeviCivita(aA,k,muA)*S[tuple(Sindex)]
-                rtm1 += sA*JA*rtm4
-        
-        ##B terms
-        if muB != aB and muB !=0 and aB!=0:
-            if bB !=3:
-                rtm1 -= GB*S[index]
-                rtm2 -= GB*S[index]
-            else:
-                rtm4 = 0
-                for k in range(1,4):
-                    if k != muB and k != aB:
-                        Sindex = list(index)
-                        Sindex[nB] = k
-                        rtm4 += LeviCivita(aB,k,muB)*S[tuple(Sindex)]
-                rtm1 += sB*JB*rtm4
-                
-        dR = 2*deltaT*rtm1
-    
-        ##<<dR^2>>/2 terms
-        if bA != 3 and bB != 3:
-            rtm3 = 0
-            if bA == bB:
-                rtm3 = np.sqrt(GA*GB)*(F[index]-Q*S[index])
-            
-            if avcp == 0:
-                dR2 = deltaT*(rtm2-rtm3)**2/avcm
-            elif avcm == 0:
-                dR2 = deltaT*(rtm2+rtm3)**2/avcp
-            else:
-                dR2 = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
-                
-        #for bA=z or bB=z: S[l]*dR+dR2=0
-        if bA != 3 and bB != 3:
-            dC[index] = (S[index]-Starg[index])*dR+dR2
-        else:
-            dC[index] = -Starg[index]*dR     
-    '''
     return dC
 
 ##F tensor
@@ -761,62 +698,6 @@ def F_tensorized(S, Starg, A, B, Nqb):
     if aA==aB and aA==0:
         F = S
     else:
-        '''
-        for index in np.ndindex(*([4]*Nqb)):
-            if (bA == 3 or bB == 3) and Starg[index]==0:
-                continue
-            muA = index[nA]
-            muB = index[nB]
-            if muA == 0 and muB == 0:
-                Findex = list(index)
-                Findex[nA] = aA
-                Findex[nB] = aB
-                F[index] = S[tuple(Findex)]
-            elif muA == 0 and muB == aB:
-                Findex = list(index)
-                Findex[nA] = aA
-                Findex[nB] = 0
-                F[index] = S[tuple(Findex)]
-            elif muA == aA and muB == 0:
-                Findex = list(index)
-                Findex[nA] = 0
-                Findex[nB] = aB
-                F[index] = S[tuple(Findex)]
-            elif muA == aA and muB == aB:
-                Findex = list(index)
-                Findex[nA] = 0
-                Findex[nB] = 0
-                F[index] = S[tuple(Findex)]
-            
-            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
-                rtm1 = 0
-                for k1 in range(1,4):
-                    if k1 != aA and k1 != muA:
-                        for k2 in range(1,4):
-                            if k2 != aB and k2 != muB:
-                                Sindex = list(index)
-                                Sindex[nA] = k1
-                                Sindex[nB] = k2
-                                rtm1 += LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2)*S[tuple(Sindex)]
-                F[index] = rtm1
-                
-            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
-                rtm1 = 0
-                for k2 in range(1,4):
-                    if k2 != aB and k2 != muB:
-                        Sindex = list(index)
-                        Sindex[nB] = k2
-                        rtm1 += LeviCivita(aB,muB,k2)*S[tuple(Sindex)]
-                F[index] = rtm1
-            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
-                rtm1 = 0
-                for k1 in range(1,4):
-                    if k1 != aA and k1 != muA:
-                        Sindex = list(index)
-                        Sindex[nA] = k1
-                        rtm1 += LeviCivita(aA,muA,k1)*S[tuple(Sindex)]
-                F[index] = rtm1
-        '''
         ind = [slice(None)]*Nqb
         for muA in range(4):
             for muB in range(4):
