@@ -32,10 +32,10 @@ def main():
     ##Parameters
     Nqb = 3                                             ##Number of qubits
     DeltaT = 0.2                                        ##time step length, default: 0.2
-    J = Nqb*[1]                                         ##coupling strength, default: [1, 0.99, 1.01, 1.005, 0.995, 1.003]
-    #J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  
+    #J = Nqb*[1]                                         ##coupling strength, default: [1, 0.99, 1.01, 1.005, 0.995, 1.003]
+    J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  
     N = 130                                             ##nr of time steps
-    M = 100                                             ##number of trajectories
+    M = 1000                                             ##number of trajectories
     Nst = 1                                             ##every Nst´th step is saved
     
     ##cost fct probabilities
@@ -44,7 +44,7 @@ def main():
     
     ##couplings, target fidelity Fstar
     K = 9                                               ##nr of couplings: 3, 4, 6, 7, 8, 9, 10, 11, 12, 14
-    Fstar = 0.8                                         ##target fidelity
+    Fstar = 0.975                                         ##target fidelity
     epsilon = 1-Fstar**2                                ##stop threshold for cost function
     params = [N, Nst, DeltaT, J[:Nqb], epsilon, K]
     
@@ -585,15 +585,18 @@ def costFunc(S, Starg, i, Nqb, subset):
 
 def costFunc_tensor(S, Starg, i, Nqb, subset):
     costf = 0
+    C = (S-Starg)**2
     for s in subset:
-        for index in np.ndindex(*([4]*Nqb)):
-            chk = 0
-            for l in range(Nqb):
-                if l not in s and index[l]>0:
-                    chk +=1
-            #chk = (-1*np.isin(range(Nqb),s)+1)*(np.array(index)>0)
-            if chk == 0:
-                costf+=(S[index]-Starg[index])**2
+       # for index in np.ndindex(*([4]*Nqb)):
+            #chk = 0
+            #for l in range(Nqb):
+            #    if l not in s and index[l]>0:
+            #        chk +=1
+       #     chk = np.sum((-1*np.isin(range(Nqb),s)+1)*(np.array(index)>0))
+       #     if chk == 0:
+       #         costf+=(S[index]-Starg[index])**2
+        ind = [slice(0,1+3*i) for i in np.isin(range(Nqb),s)]
+        costf+=np.sum(C[tuple(ind)])
     
     costf *= 1/2**(i+1)/scipy.special.binom(Nqb,i)
     return costf
@@ -734,13 +737,15 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                 continue
             deltaf = 0
             for s in subset[l]:
-                for index in np.ndindex(*([4]*Nqb)):
-                    chk = 0
-                    for i in range(Nqb):
-                        if i not in s and index[i]>0:
-                            chk +=1
-                    if chk == 0:
-                        deltaf += dC[index]
+                #for index in np.ndindex(*([4]*Nqb)):
+                #    chk = 0
+                #    for i in range(Nqb):
+                #        if i not in s and index[i]>0:
+                #            chk +=1
+                #    if chk == 0:
+                #        deltaf += dC[index]
+                ind = [slice(0,1+3*i) for i in np.isin(range(Nqb),s)]
+                deltaf += np.sum(dC[tuple(ind)])
             costf[coupl] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
             
         costf[coupl] += p[-1]*np.sum(dC)/2**Nqb
@@ -863,28 +868,28 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
         ##A terms
         if i != aA and aA!=0:
             if bA !=3:
-                dR[tuple(indA)] -= GA*S[tuple(indA)]
+                dR[tuple(indA)] -= 2*deltaT*GA*S[tuple(indA)]
                 rtm2[tuple(indA)] -= GA*S[tuple(indA)]
             else:
                 for k in range(1,4):
                     if k != i and k != aA:
                         Sindex = [slice(None)]*Nqb
                         Sindex[nA] = k
-                        dR[tuple(indA)] += sA*JA*int(LeviCivita(aA,k,i))*S[tuple(Sindex)]
+                        dR[tuple(indA)] += 2*deltaT*sA*JA*int(LeviCivita(aA,k,i))*S[tuple(Sindex)]
         indB[nB] = i
         ##B terms
         if i != aB and aB!=0:
             if bB !=3:
-                dR[tuple(indB)] -= GB*S[tuple(indB)]
+                dR[tuple(indB)] -= 2*deltaT*GB*S[tuple(indB)]
                 rtm2[tuple(indB)] -= GB*S[tuple(indB)]
             else:
                 for k in range(1,4):
                     if k != i and k != aB:
                         Sindex = [slice(None)]*Nqb
                         Sindex[nB] = k
-                        dR[tuple(indB)] += sB*JB*int(LeviCivita(aB,k,i))*S[tuple(Sindex)]
+                        dR[tuple(indB)] += 2*deltaT*sB*JB*int(LeviCivita(aB,k,i))*S[tuple(Sindex)]
     
-    rtm3 = np.sqrt(GA*GB)*(F-Q*S)
+    rtm3 = (bA == bB)*np.sqrt(GA*GB)*(F-Q*S)
     if avcp == 0 and avcm !=0:
         dR2 = deltaT*(rtm2-rtm3)**2/avcm
     elif avcm == 0 and avcp !=0:
@@ -920,7 +925,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 rtm4 = 0
                 for k in range(1,4):
                     if k != muA and k != aA:
-                        Sindex = list(index)  ##does this work without changing index?
+                        Sindex = list(index)
                         Sindex[nA] = k
                         rtm4 += LeviCivita(aA,k,muA)*S[tuple(Sindex)]
                 rtm1 += sA*JA*rtm4
@@ -934,7 +939,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 rtm4 = 0
                 for k in range(1,4):
                     if k != muB and k != aB:
-                        Sindex = list(index)  ##does this work without changing index?
+                        Sindex = list(index)
                         Sindex[nB] = k
                         rtm4 += LeviCivita(aB,k,muB)*S[tuple(Sindex)]
                 rtm1 += sB*JB*rtm4
@@ -1016,28 +1021,29 @@ def F_tensorized(S, Starg, A, B, Nqb):
     if aA==aB and aA==0:
         F = S
     else:
+        '''
         for index in np.ndindex(*([4]*Nqb)):
             if (bA == 3 or bB == 3) and Starg[index]==0:
                 continue
             muA = index[nA]
             muB = index[nB]
             if muA == 0 and muB == 0:
-                Findex = list(index)  ##does this work without changing index?
+                Findex = list(index)
                 Findex[nA] = aA
                 Findex[nB] = aB
                 F[index] = S[tuple(Findex)]
             elif muA == 0 and muB == aB:
-                Findex = list(index)  ##does this work without changing index?
+                Findex = list(index)
                 Findex[nA] = aA
                 Findex[nB] = 0
                 F[index] = S[tuple(Findex)]
             elif muA == aA and muB == 0:
-                Findex = list(index)  ##does this work without changing index?
+                Findex = list(index)
                 Findex[nA] = 0
                 Findex[nB] = aB
                 F[index] = S[tuple(Findex)]
             elif muA == aA and muB == aB:
-                Findex = list(index)  ##does this work without changing index?
+                Findex = list(index)
                 Findex[nA] = 0
                 Findex[nB] = 0
                 F[index] = S[tuple(Findex)]
@@ -1048,7 +1054,7 @@ def F_tensorized(S, Starg, A, B, Nqb):
                     if k1 != aA and k1 != muA:
                         for k2 in range(1,4):
                             if k2 != aB and k2 != muB:
-                                Sindex = list(index)  ##does this work without changing index?
+                                Sindex = list(index)
                                 Sindex[nA] = k1
                                 Sindex[nB] = k2
                                 rtm1 += LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2)*S[tuple(Sindex)]
@@ -1058,7 +1064,7 @@ def F_tensorized(S, Starg, A, B, Nqb):
                 rtm1 = 0
                 for k2 in range(1,4):
                     if k2 != aB and k2 != muB:
-                        Sindex = list(index)  ##does this work without changing index?
+                        Sindex = list(index)
                         Sindex[nB] = k2
                         rtm1 += LeviCivita(aB,muB,k2)*S[tuple(Sindex)]
                 F[index] = rtm1
@@ -1066,10 +1072,48 @@ def F_tensorized(S, Starg, A, B, Nqb):
                 rtm1 = 0
                 for k1 in range(1,4):
                     if k1 != aA and k1 != muA:
-                        Sindex = list(index)  ##does this work without changing index?
+                        Sindex = list(index)
                         Sindex[nA] = k1
                         rtm1 += LeviCivita(aA,muA,k1)*S[tuple(Sindex)]
                 F[index] = rtm1
+        '''
+        ind = [slice(None)]*Nqb
+        for muA in range(4):
+            for muB in range(4):
+                ind[nA] = muA
+                ind[nB] = muB
+                
+                if (muA==aA or muA==0) and (muB==aB or muB==0):
+                    Findex = [slice(None)]*Nqb
+                    Findex[nA] = (muA==0)*aA
+                    Findex[nB] = (muB==0)*aB
+                    F[tuple(ind)] = S[tuple(Findex)]
+                
+                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
+                    for k1 in range(1,4):
+                        if k1 != aA and k1 != muA:
+                            for k2 in range(1,4):
+                                if k2 != aB and k2 != muB:
+                                    Sindex = [slice(None)]*Nqb
+                                    Sindex[nA] = k1
+                                    Sindex[nB] = k2
+                                    F[tuple(ind)] += int(LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2))*S[tuple(Sindex)]
+                    
+                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
+                    for k2 in range(1,4):
+                        if k2 != aB and k2 != muB:
+                            Sindex = [slice(None)]*Nqb
+                            Sindex[nA] = muA
+                            Sindex[nB] = k2
+                            F[tuple(ind)] += int(LeviCivita(aB,muB,k2))*S[tuple(Sindex)]
+                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
+                    for k1 in range(1,4):
+                        if k1 != aA and k1 != muA:
+                            Sindex = [slice(None)]*Nqb
+                            Sindex[nA] = k1
+                            Sindex[nB] = muB
+                            F[tuple(ind)] += int(LeviCivita(aA,muA,k1))*S[tuple(Sindex)]
+                            
     return F
 
 ##run main program
