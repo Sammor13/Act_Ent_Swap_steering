@@ -267,7 +267,6 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     slist, aList, bList = coupl_list(K)
         
     ##operator list
-    #pauliPlaqList = plaqSlist(Nqb)
     pauliPlaq_tensor = plaqS_tensor(Nqb)
     
     ##initial state
@@ -275,9 +274,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     psi = psi0
     
     ##initialize Pauli tensors
-    #Spsi = qt.expect(pauliPlaqList, psi0)
     Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi0), [4]*Nqb)
-    #Starg = qt.expect(pauliPlaqList, psiTarg)
     Starg = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psiTarg), [4]*Nqb)
     
     ##subset list
@@ -286,10 +283,9 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     #subset = iniLocalSubsetPeriodic(Nqb)
     
     ##Initial cost function values
-    global_C[0] = np.linalg.norm(Spsi-Starg)**2/2**(Nqb+1)
+    global_C[0] = np.sum((Spsi-Starg)**2)/2**(Nqb+1)
     Fid = global_C[0]
     
-    #cost = csFct(Spsi, Starg, Nqb, subset)
     cost = csFct_tensor(Spsi, Starg, Nqb, subset)
     local_C[0] = sum([pList[j]*cost[j] for j in range(Nqb)])
     
@@ -322,23 +318,12 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             G1, G2 = Gamma[n1], Gamma[n2]
             
             ##Active decision making
-            #deltaC = expCostF(Spsi, Starg, J, Gamma, DeltaT, pList, n1, n2, Nqb, K, subset)
             deltaC = expCostF_tensorized(Spsi, Starg, J, Gamma, DeltaT, pList, n1, n2, Nqb, K, subset)
         
-            #klis = rng.choice(np.argwhere(deltaC == np.nanmin(deltaC)))
-            #k_List[(i-1)*int(Nqb/2)+nPair] = klis
-            
             k1, k2 = rng.choice(np.argwhere(deltaC == np.nanmin(deltaC)))
             k_List[(i-1)*int(Nqb/2)+nPair] = k1*k2
             
             ##chosen couplings
-            #s1 = slist[int(klis%K)]
-            #s2 = slist[int(klis/K)]
-            #alpha1 = aList[int(klis%K)]
-            #alpha2 = aList[int(klis/K)]
-            #beta1 = bList[int(klis%K)]
-            #beta2 = bList[int(klis/K)]
-            
             s1 = slist[k1]
             s2 = slist[k2]
             alpha1 = aList[k1]
@@ -353,9 +338,6 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 break
             
             ##chosen Pauli operators
-            #sig1 = pauliPlaqList[alpha1*4**n1]
-            #sig2 = pauliPlaqList[alpha2*4**n2]
-            
             sig1index = [0]*Nqb
             sig1index[n1] = alpha1
             sig1 = pauliPlaq_tensor[tuple(sig1index)]
@@ -377,17 +359,15 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 c_op = [np.sqrt(G1/2)*sig1+np.sqrt(G2/2)*sig2, np.sqrt(G1/2)*sig1-np.sqrt(G2/2)*sig2]
                 psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)
                 
-        ##Update values   
-        #Spsi = qt.expect(pauliPlaqList,psi)    
+        ##Update values     
         Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
-        Fid = np.linalg.norm(Spsi-Starg)**2/2**(Nqb+1)
+        Fid = np.sum((Spsi-Starg)**2)/2**(Nqb+1)
         
         ##stoppage criterion at global cost value eps, corresponding to F=F*
         if Fid < eps:
             ##final values
             psi_List[int((i-1)/Nst)+1:] = (int(N/Nst)-int((i-1)/Nst))*[1]*psi
             global_C[int((i-1)/Nst)+1:] = Fid
-            #cost = csFct(Spsi, Starg, Nqb, subset)
             cost = csFct_tensor(Spsi, Starg, Nqb, subset)
             local_C[int((i-1)/Nst)+1:] = sum([pList[j]*cost[j] for j in range(Nqb)])
             
@@ -404,7 +384,6 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
         if i%Nst == 0:
             psi_List[int(i/Nst)] = psi
             global_C[int(i/Nst)] = Fid
-            #cost = csFct(Spsi, Starg, Nqb, subset)
             cost = csFct_tensor(Spsi, Starg, Nqb, subset)
             local_C[int(i/Nst)] = sum([pList[j]*cost[j] for j in range(Nqb)])
             
@@ -544,9 +523,6 @@ def unitsol(psi, deltaT, H, c_op, P):
 def plaqS(ind):
     return qt.tensor([s[i] for i in ind])
     
-def plaqSlist(Nqb):
-    return  [plaqS([int(i/(4**j)%4) for j in range(Nqb)]) for i in range(4**Nqb)]
-    
 def plaqS_tensor(Nqb):
     S_tensor=np.zeros([4]*Nqb, dtype=object)
     for index in np.ndindex(*([4]*Nqb)):
@@ -554,47 +530,18 @@ def plaqS_tensor(Nqb):
     return  S_tensor
 
 ##cost function for all levels 1 - Nqb
-def csFct(S, Starg, Nqb, subsets):
-    costf = np.zeros(Nqb)
-    for i in range(Nqb-1):
-       costf[i] = costFunc(S, Starg, i+1, Nqb, subsets[i])
-    costf[Nqb-1] = np.linalg.norm(S-Starg)**2/2**(Nqb+1)
-    return costf
-
 def csFct_tensor(S, Starg, Nqb, subsets):
     costf = np.zeros(Nqb)
     for i in range(Nqb-1):
        costf[i] = costFunc_tensor(S, Starg, i+1, Nqb, subsets[i])
-    costf[Nqb-1] = np.linalg.norm(S-Starg)**2/2**(Nqb+1)
+    costf[Nqb-1] = np.sum((S-Starg)**2)/2**(Nqb+1)
     return costf
 
 ##cost function of level i
-def costFunc(S, Starg, i, Nqb, subset):
-    costf = 0
-    for s in subset:
-        for j in range(4**Nqb):
-            chk = 0
-            for l in range(Nqb):
-                if l not in s and int(j/(4**l)%4)>0:
-                    chk +=1
-            if chk == 0:
-                costf+=(S[j]-Starg[j])**2
-    
-    costf *= 1/2**(i+1)/scipy.special.binom(Nqb,i)
-    return costf
-
 def costFunc_tensor(S, Starg, i, Nqb, subset):
     costf = 0
     C = (S-Starg)**2
     for s in subset:
-       # for index in np.ndindex(*([4]*Nqb)):
-            #chk = 0
-            #for l in range(Nqb):
-            #    if l not in s and index[l]>0:
-            #        chk +=1
-       #     chk = np.sum((-1*np.isin(range(Nqb),s)+1)*(np.array(index)>0))
-       #     if chk == 0:
-       #         costf+=(S[index]-Starg[index])**2
         ind = [slice(0,1+3*i) for i in np.isin(range(Nqb),s)]
         costf+=np.sum(C[tuple(ind)])
     
@@ -602,80 +549,6 @@ def costFunc_tensor(S, Starg, i, Nqb, subset):
     return costf
 
 ##expected cost function change
-def expCostF(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
-    JA = J[nA]
-    JB = J[nB]
-    GA = Gamma[nA]
-    GB = Gamma[nB]
-    
-    ##coupling lists
-    slist, aList, bList = coupl_list(K)
-    
-    ##expected cost func change
-    costf=np.zeros(K**2)    
-    
-    ##loop over couplings
-    for j in range(K**2):
-        ##coupling
-        sA = slist[j%K]
-        sB = slist[int(j/K)]
-        aA = aList[j%K]
-        aB = aList[int(j/K)]
-        bA = bList[j%K]
-        bB = bList[int(j/K)]
-        
-        ##different couplings with same dC for bA=y
-        if bA == 2:
-            ##bA,bB = y,x:
-            if bB == 1:
-                for i in range(j):
-                    if bList[i%K] == 1 and bList[int(i/K)] == 2 and aA == aList[i%K] and aB == aList[int(i/K)]:
-                        costf[j] = costf[i]
-                        break
-                continue
-            ##bA,bB = y,y:
-            if bB == 2:
-                for i in range(j):
-                    if bList[i%K] == 1 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
-                        costf[j] = costf[i]
-                        break
-                continue
-            ##bA,bB = y,z:
-            if bB == 3:
-                for i in range(j):
-                    if bList[i%K] == 1 and bList[int(i/K)] == 3 and aA == aList[i%K] and aB == aList[int(i/K)]:
-                        costf[j] = costf[i]
-                        break
-                continue
-        ##bA,bB = z,y:
-        elif bA == 3 and bB == 2:
-            for i in range(j):
-                if bList[i%K] == 3 and bList[int(i/K)] == 1 and aA == aList[i%K] and aB == aList[int(i/K)]:
-                    costf[j] = costf[i]
-                    break
-            continue
-        
-        dC = dC_tensor(S, Starg, deltaT, (sA, JA, GA), (sB, JB, GB), (aA, bA, nA), (aB, bB, nB), Nqb)
-        
-        ##assemble
-        for l in range(Nqb-1):
-            if p[l] == 0:
-                continue
-            deltaf = 0
-            for s in subset[l]:
-                for m in range(4**Nqb):
-                    chk = 0
-                    for i in range(Nqb):
-                        if i not in s and int(m/(4**i)%4)>0:
-                            chk +=1
-                    if chk == 0:
-                        deltaf += dC[m]
-            costf[j] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
-            
-        costf[j] += p[-1]*sum(dC)/2**Nqb
-        
-    return costf
-
 def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
     JA = J[nA]
     JB = J[nB]
@@ -737,13 +610,6 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                 continue
             deltaf = 0
             for s in subset[l]:
-                #for index in np.ndindex(*([4]*Nqb)):
-                #    chk = 0
-                #    for i in range(Nqb):
-                #        if i not in s and index[i]>0:
-                #            chk +=1
-                #    if chk == 0:
-                #        deltaf += dC[index]
                 ind = [slice(0,1+3*i) for i in np.isin(range(Nqb),s)]
                 deltaf += np.sum(dC[tuple(ind)])
             costf[coupl] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
@@ -751,87 +617,6 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
         costf[coupl] += p[-1]*np.sum(dC)/2**Nqb
         
     return costf
-
-##dC tensor:
-def dC_tensor(S, Starg, deltaT, A, B, kA, kB, Nqb):
-    sA, JA, GA = A
-    sB, JB, GB = B
-    
-    aA, bA, nA = kA
-    aB, bB, nB = kB
-    
-    Q = S[aA*4**nA+aB*4**nB]
-    
-    ##F tensor
-    F = F_tensor(S, Starg, (aA, bA, nA), (aB, bB, nB), Nqb)
-    
-    ##<c_eta^\dagger c_eta>
-    avcp = (bA != 3)*GA+(bB != 3)*GB
-    rtm1 = (bA == bB)*(bA != 3)*2*np.sqrt(GA*GB)*Q
-    avcm = avcp-rtm1
-    avcp += rtm1
-        
-    dC = np.zeros(4**Nqb)
-    
-    ##calculate <<dR>> and <<dR^2>>
-    for l in range(4**Nqb):
-        ##skip terms that do not contribute to dC
-        if (bA == 3 or bB == 3) and Starg[l]==0:
-            continue
-            
-        ##sigma_muA, sigma_muB
-        muA = int(l/(4**nA)%4)
-        muB = int(l/(4**nB)%4)
-        
-        ##<<dR>> terms
-        rtm1 = 0
-        rtm2 = 0
-        ##A terms
-        if muA != aA and muA != 0 and aA!=0:
-            if bA !=3:
-                rtm1 -= GA*S[l]
-                rtm2 -= GA*S[l]
-            else:
-                rtm4 = 0
-                for k in range(1,4):
-                    if k != muA and k != aA:
-                        rtm4 += LeviCivita(aA,k,muA)*S[l+(k-muA)*4**nA]
-                rtm1 += sA*JA*rtm4
-        
-        ##B terms
-        if muB != aB and muB !=0 and aB!=0:
-            if bB !=3:
-                rtm1 -= GB*S[l]
-                rtm2 -= GB*S[l]
-            else:
-                rtm4 = 0
-                for k in range(1,4):
-                    if k != muB and k != aB:
-                        rtm4 += LeviCivita(aB,k,muB)*S[l+(k-muB)*4**nB]
-                rtm1 += sB*JB*rtm4
-                
-        dR = 2*deltaT*rtm1
-    
-        ##<<dR^2>>/2 terms
-        if bA != 3 and bB != 3:
-            rtm3 = 0
-            if bA == bB:
-                rtm3 = np.sqrt(GA*GB)*(F[l]-Q*S[l])
-            
-            if avcp == 0:
-                dR2 = deltaT*(rtm2-rtm3)**2/avcm
-            elif avcm == 0:
-                dR2 = deltaT*(rtm2+rtm3)**2/avcp
-            else:
-                dR2 = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
-        
-        #for bA=z or bB=z: S[l]*dR+dR2=0
-        if bA != 3 and bB != 3:
-            dC[l] = (S[l]-Starg[l])*dR+dR2
-        else:
-            dC[l] = -Starg[l]*dR
-    
-    return dC
 
 ##dC tensor:
 def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
@@ -968,51 +753,6 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     return dC
 
 ##F tensor
-def F_tensor(S, Starg, A, B, Nqb):
-    aA, bA, nA = A
-    aB, bB, nB = B
-    
-    F = np.zeros(4**Nqb)
-    if aA==aB and aA==0:
-        F = S
-    else:
-        for l in range(4**Nqb):
-            if (bA == 3 or bB == 3) and Starg[l]==0:
-                continue
-            muA = int(l/(4**nA)%4)
-            muB = int(l/(4**nB)%4)
-            if muA == 0 and muB == 0:
-                F[l] = S[l+aA*4**nA+aB*4**nB]
-            elif muA == 0 and muB == aB:
-                F[l] = S[l+aA*4**nA-aB*4**nB]
-            elif muA == aA and muB == 0:
-                F[l] = S[l-aA*4**nA+aB*4**nB]
-            elif muA == aA and muB == aB:
-                F[l] = S[l-aA*4**nA-aB*4**nB]
-            
-            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
-                rtm1 = 0
-                for k1 in range(1,4):
-                    if k1 != aA and k1 != muA:
-                        for k2 in range(1,4):
-                            if k2 != aB and k2 != muB:
-                                rtm1 += LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2)*S[l+(k1-muA)*4**nA+(k2-muB)*4**nB]
-                F[l] = rtm1
-                
-            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
-                rtm1 = 0
-                for k2 in range(1,4):
-                    if k2 != aB and k2 != muB:
-                        rtm1 += LeviCivita(aB,muB,k2)*S[l+(k2-muB)*4**nB]
-                F[l] = rtm1
-            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
-                rtm1 = 0
-                for k1 in range(1,4):
-                    if k1 != aA and k1 != muA:
-                        rtm1 += LeviCivita(aA,muA,k1)*S[l+(k1-muA)*4**nA]
-                F[l] = rtm1
-    return F
-
 def F_tensorized(S, Starg, A, B, Nqb):
     aA, bA, nA = A
     aB, bB, nB = B
