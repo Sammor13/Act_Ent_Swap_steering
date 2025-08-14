@@ -4,7 +4,7 @@
 Created on Wed Jul 28 14:40:09 2021
 
 @author: Samuel Morales
-TODO: save traj, vectorize/tensorize costFunc, expCostF calculation, exact expressions
+TODO: save traj, exact expressions
 """
  
 import numpy as np
@@ -321,7 +321,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             deltaC = expCostF_tensorized(Spsi, Starg, J, Gamma, DeltaT, pList, n1, n2, Nqb, K, subset)
         
             k1, k2 = rng.choice(np.argwhere(deltaC == np.nanmin(deltaC)))
-            k_List[(i-1)*int(Nqb/2)+nPair] = k1*k2
+            k_List[(i-1)*int(Nqb/2)+nPair] = k1+K*k2
             
             ##chosen couplings
             s1 = slist[k1]
