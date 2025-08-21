@@ -4,7 +4,7 @@
 Created on Wed Jul 28 14:40:09 2021
 
 @author: Samuel Morales
-TODO: save traj, exact expressions
+TODO: save traj
 """
  
 import numpy as np
@@ -29,13 +29,21 @@ s=[s0,sx,sy,sz]
 
 ##main program runs simulations with fixed parameters and plots results
 def main():
+    #random number generator
+    rng = np.random.default_rng() 
+    
     ##Parameters
-    Nqb = 3                                             ##Number of qubits
+    Nqb = 4                                             ##Number of qubits
     DeltaT = 0.2                                        ##time step length, default: 0.2
-    #J = Nqb*[1]                                         ##coupling strength, default: [1, 0.99, 1.01, 1.005, 0.995, 1.003]
-    J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  
+    
+    ##coupling strength, default: [1, 0.99, 1.01, 1.005, 0.995, 1.003]
+    #J = Nqb*[1]                                            ##equal weak coupling                                         
+    J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  ##default values from original paper
+    #J = Nqb*[np.pi/4/DeltaT]                               ##equal strong coupling
+    #J = [np.pi/4/DeltaT-0.05+0.1*rng.random() for i in range(Nqb)] ##random offset strong coupling, -0.1(5) works best
+    
     N = 130                                             ##nr of time steps
-    M = 1000                                             ##number of trajectories
+    M = 100                                             ##number of trajectories
     Nst = 1                                             ##every Nst´th step is saved
     
     ##cost fct probabilities
@@ -88,7 +96,7 @@ def main():
    
     ##coupling histogram
     fig, ax = plt.subplots(figsize=(8,6))
-    plt.hist(np.concatenate(k_List), bins=np.arange(0,K**2), alpha=0.5, edgecolor='grey')
+    plt.hist(np.concatenate(k_List), bins=np.arange(0,K**2+1), alpha=0.5, edgecolor='grey')
     
     plt.xlim(left=0, right=K**2)
     plt.minorticks_on()
@@ -319,6 +327,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             
             ##Active decision making
             deltaC = expCostF_tensorized(Spsi, Starg, J, Gamma, DeltaT, pList, n1, n2, Nqb, K, subset)
+            #deltaC = expCostF_tensorized_exact(Spsi, Starg, J, DeltaT, pList, n1, n2, Nqb, K, subset)
         
             k1, k2 = rng.choice(np.argwhere(deltaC == np.nanmin(deltaC)))
             k_List[(i-1)*int(Nqb/2)+nPair] = k1+K*k2
@@ -358,6 +367,56 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             elif beta1==beta2:
                 c_op = [np.sqrt(G1/2)*sig1+np.sqrt(G2/2)*sig2, np.sqrt(G1/2)*sig1-np.sqrt(G2/2)*sig2]
                 psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)
+            
+            ##Kraus operator construction
+            if beta1==3:
+                A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)##Identity?no
+                A1 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(beta2!=3)*1j*s2*np.sin(J2*DeltaT)*sig2
+                #P0 = (1-(beta2!=3)*np.sin(J2*DeltaT)**2)/2
+                P1 = (beta2!=3)*np.sin(J2*DeltaT)**2
+                P0 = 1-P1
+                Plist = [P0, P1]
+                Alist = [A0, A1]
+                psi, xi = krausSol(psi, Alist, Plist)
+                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+            elif beta2==3:
+                A0 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(np.cos(J1*DeltaT)-(beta1==3)*1j*s1*np.sin(J1*DeltaT)*sig1)
+                A1 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(beta1!=3)*1j*s1*np.sin(J1*DeltaT)*sig1
+                #P0 = (1-(beta2!=3)*np.sin(J2*DeltaT)**2)/2
+                P1 = (beta1!=3)*np.sin(J1*DeltaT)**2
+                P0 = 1-P1
+                
+                Plist = [P0, P1]
+                Alist = [A0, A1]
+                psi, xi = krausSol(psi, Alist, Plist)
+                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+            else:
+                A0p = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
+                       -s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
+                A0m = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
+                       +s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
+                A1p = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1+((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
+                A1m = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1-((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
+                
+                ##
+                #Qindex = [0]*Nqb
+                #Qindex[nA] = aA
+                #Qindex[nB] = aB
+                #Q = Spsi[tuple(Qindex)]
+                Q = qt.expect(sig1*sig2, psi)
+                P0p = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                      +(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                P0m = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                     -(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                P1p = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                      +(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                P1m = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                      -(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                
+                Plist = [P0p, P0m, P1p, P1m]
+                Alist = [A0p, A0m, A1p, A1m]
+                psi, xi = krausSol(psi, Alist, Plist)
+                xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
                 
         ##Update values     
         Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
@@ -519,6 +578,41 @@ def unitsol(psi, deltaT, H, c_op, P):
     else:
         return (c_op*psi).unit(), 1
 
+##Exact Kraus operator evolution
+def krausSol(psi, A, P):
+    '''State evolution for multiple Kraus operators
+    Parameters
+    ----------
+
+    psi: :class:`qutip.Qobj`
+        initial state (ket or oper)
+    
+    A: List of :class:`qutip.Qobj`
+        Kraus operators
+        
+    P: List of (float)
+        Probabilities of corresponding Kraus operators
+        
+    Returns
+    -------
+
+    result: :class:`qutip.Qobj`
+
+        Normalized time-evolved state (ket or oper)
+    '''
+    #random number generator
+    rng = np.random.default_rng() 
+    #stochastic measurement outcome
+    while 1==1:
+        k = int(len(P)*rng.random())
+        if rng.random() < P[k]:
+            break
+    ##time evolution
+    if psi.type == 'ket':
+        return (A[k]*psi).unit(), k
+    elif psi.type == 'oper':
+        return (A[k]*psi*A[k].dag()).unit(), k
+
 ###plaquette operators
 def plaqS(ind):
     return qt.tensor([s[i] for i in ind])
@@ -618,6 +712,73 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
         
     return costf
 
+def expCostF_tensorized_exact(S, Starg, J, deltaT, p, nA, nB, Nqb, K, subset):
+    JA = J[nA]
+    JB = J[nB]
+    
+    ##coupling lists
+    slist, aList, bList = coupl_list(K)
+    
+    ##expected cost func change
+    costf=np.zeros([K]*2)    
+    
+    ##loop over couplings
+    for coupl in np.ndindex(*([K]*2)):
+        ##coupling
+        sA = slist[coupl[0]]
+        sB = slist[coupl[1]]
+        aA = aList[coupl[0]]
+        aB = aList[coupl[1]]
+        bA = bList[coupl[0]]
+        bB = bList[coupl[1]]
+        
+        ##different couplings with same dC for bA=y
+        if bA == 2:
+            ##bA,bB = y,x:
+            if bB == 1:
+                for couplOld in np.ndindex(*([K]*2)):
+                    if bList[couplOld[0]] == 1 and bList[couplOld[1]] == 2 and aA == aList[couplOld[0]] and aB == aList[couplOld[1]]:
+                        costf[coupl] = costf[couplOld]
+                        break
+                continue
+            ##bA,bB = y,y:
+            if bB == 2:
+                for couplOld in np.ndindex(*([K]*2)):
+                    if bList[couplOld[0]] == 1 and bList[couplOld[1]] == 1 and aA == aList[couplOld[0]] and aB == aList[couplOld[1]]:
+                        costf[coupl] = costf[couplOld]
+                        break
+                continue
+            ##bA,bB = y,z:
+            if bB == 3:
+                for couplOld in np.ndindex(*([K]*2)):
+                    if bList[couplOld[0]] == 1 and bList[couplOld[1]] == 3 and aA == aList[couplOld[0]] and aB == aList[couplOld[1]]:
+                        costf[coupl] = costf[couplOld]
+                        break
+                continue
+        ##bA,bB = z,y:
+        elif bA == 3 and bB == 2:
+            for couplOld in np.ndindex(*([K]*2)):
+                if bList[couplOld[0]] == 3 and bList[couplOld[1]] == 1 and aA == aList[couplOld[0]] and aB == aList[couplOld[1]]:
+                    costf[coupl] = costf[couplOld]
+                    break
+            continue
+        
+        dC = dC_tensorized_exact(S, Starg, deltaT, (sA, JA), (sB, JB), (aA, bA, nA), (aB, bB, nB), Nqb)
+        
+        ##assemble
+        for l in range(Nqb-1):
+            if p[l] == 0:
+                continue
+            deltaf = 0
+            for s in subset[l]:
+                ind = [slice(0,1+3*i) for i in np.isin(range(Nqb),s)]
+                deltaf += np.sum(dC[tuple(ind)])
+            costf[coupl] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
+            
+        costf[coupl] += p[-1]*np.sum(dC)/2**Nqb
+        
+    return costf
+
 ##dC tensor:
 def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     sA, JA, GA = A
@@ -684,6 +845,136 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     
     if bA != 3 and bB != 3:
         dC = (S-Starg)*dR+dR2
+    else:
+        dC = -Starg*dR
+        
+    return dC
+
+##dC tensor:
+def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
+    sA, JA = A
+    sB, JB = B
+    
+    aA, bA, nA = kA
+    aB, bB, nB = kB
+    
+    Qindex = [0]*Nqb
+    Qindex[nA] = aA
+    Qindex[nB] = aB
+    Q = S[tuple(Qindex)]
+    
+    ##F tensor
+    F = F_tensorized(S, Starg, (aA, bA, nA), (aB, bB, nB), Nqb)
+    
+    ##H tensor
+    H = F
+    
+    if aA!=0 and aB!=0:
+        ind = [slice(None)]*Nqb
+        for muA, muB in itertools.product(range(1,4), repeat=2):
+            ind[nA] = muA
+            ind[nB] = muB
+            if muA != aA and muB != aB:
+                H[tuple(ind)] *= -1
+    
+    ##measurement probabilities
+    P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+          +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+    P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+          -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+    P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+          +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+    P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+          -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+        
+    rtm02 = np.zeros([4]*Nqb)
+    rtm12 = np.zeros([4]*Nqb)
+    
+    ###dR calculation
+    dR = np.zeros([4]*Nqb)
+    
+    indAB = [slice(None)]*Nqb
+    
+    for i,j in itertools.product(range(4), repeat=2):
+        indAB[nA] = i
+        indAB[nB] = j
+        if (Starg[tuple(indAB)] == 0).all() and bA != 3 and bB != 3:
+            continue
+  
+        ##A terms
+        if i != aA and aA!=0 and i !=0:
+            if j == 0 or j == aB:
+                dR[tuple(indAB)] -= 2*np.sin(deltaT*JA)**2*S[tuple(indAB)]
+            else:
+                dR[tuple(indAB)] -= 2*np.sin(deltaT*JA)**2*S[tuple(indAB)]*(1-np.sin(deltaT*JB)**2)
+            if bA == 3:
+                for k in range(1,4):
+                    if k != i and k != aA:
+                        Sindex = [slice(None)]*Nqb
+                        Sindex[nA] = k
+                        Sindex[nB] = j
+                        
+                        if j == 0 or j == aB:
+                            dR[tuple(indAB)] += sA*np.sin(2*deltaT*JA)*int(LeviCivita(aA,k,i))*S[tuple(Sindex)]
+                        else:
+                            dR[tuple(indAB)] += sA*np.sin(2*deltaT*JA)*int(LeviCivita(aA,k,i))*S[tuple(Sindex)]*(1-2*np.sin(deltaT*JB)**2)
+                        
+        ##B terms
+        if j != aB and aB!=0 and j !=0:
+            if i == 0 or i == aA:
+                dR[tuple(indAB)] -= 2*np.sin(deltaT*JB)**2*S[tuple(indAB)]
+            else:
+                dR[tuple(indAB)] -= 2*np.sin(deltaT*JB)**2*S[tuple(indAB)]*(1-np.sin(deltaT*JA)**2)
+            if bB == 3:
+                for k in range(1,4):
+                    if k != j and k != aB:
+                        Sindex = [slice(None)]*Nqb
+                        Sindex[nB] = k
+                        Sindex[nA] = i
+                        
+                        if i == 0 or i == aA:
+                            dR[tuple(indAB)] += sB*np.sin(2*deltaT*JB)*int(LeviCivita(aB,k,j))*S[tuple(Sindex)]
+                        else:
+                            dR[tuple(indAB)] += sB*np.sin(2*deltaT*JB)*int(LeviCivita(aB,k,j))*S[tuple(Sindex)]*(1-2*np.sin(deltaT*JA)**2)
+                            
+        ##AB terms
+        if bA == 3 and bB == 3 and i != aA and aA != 0 and j != aB and aB != 0 and i != 0 and j != 0:
+            for k,l in itertools.product(range(1,4), repeat=2):
+                if k != i and k != aA and l != j and l != aB:
+                    Sindex = [slice(None)]*Nqb
+                    Sindex[nA] = k
+                    Sindex[nB] = l
+                    dR[tuple(indAB)] += sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*int(LeviCivita(aA,k,i))*int(LeviCivita(aB,l,j))*S[tuple(Sindex)]
+                
+    ##dR2 terms
+        if bA != 3 and bB != 3:#and bA == bB
+            ##A terms
+            if i != aA and i!=0 and aA!=0:
+                rtm12[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2*S[tuple(indAB)]
+            ##B terms
+            if j != aB and j!=0 and aB!=0:
+                rtm12[tuple(indAB)] -= np.sin(JB*deltaT)**2*np.cos(JA*deltaT)**2*S[tuple(indAB)]
+            
+            ##AB terms
+            if i != aA and i!=0 and aA!=0 and (j==aB or j==0 or aB==0):
+                rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
+            elif j != aB and j!=0 and aB!=0 and (i==aA or i==0 or aA==0):
+                rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
+            
+    rtm03 = 1/4*(bA == bB)*(-1)**bA*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(H-Q*S)
+    rtm13 = 1/4*(bA == bB)*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(F-Q*S)
+            
+    if P1p == 0 and P1m !=0:
+        dR2 = (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m
+    elif P1m == 0 and P1p !=0:
+        dR2 = (rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p
+    elif P1p !=0 and P1m !=0:
+        dR2 = ((rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+
+                (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m)
+    
+    ##assemble
+    if bA != 3 and bB != 3:#and bA == bB
+        dC = (S-Starg)*dR+dR2/2
     else:
         dC = -Starg*dR
         
