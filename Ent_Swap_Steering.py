@@ -369,54 +369,47 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)
             
             ##Kraus operator construction
-            if beta1==3:
-                A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)##Identity?no
-                A1 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(beta2!=3)*1j*s2*np.sin(J2*DeltaT)*sig2
-                #P0 = (1-(beta2!=3)*np.sin(J2*DeltaT)**2)/2
-                P1 = (beta2!=3)*np.sin(J2*DeltaT)**2
-                P0 = 1-P1
-                Plist = [P0, P1]
-                Alist = [A0, A1]
-                psi, xi = krausSol(psi, Alist, Plist)
-                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
-            elif beta2==3:
-                A0 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(np.cos(J1*DeltaT)-(beta1==3)*1j*s1*np.sin(J1*DeltaT)*sig1)
-                A1 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(beta1!=3)*1j*s1*np.sin(J1*DeltaT)*sig1
-                #P0 = (1-(beta2!=3)*np.sin(J2*DeltaT)**2)/2
-                P1 = (beta1!=3)*np.sin(J1*DeltaT)**2
-                P0 = 1-P1
-                
-                Plist = [P0, P1]
-                Alist = [A0, A1]
-                psi, xi = krausSol(psi, Alist, Plist)
-                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
-            else:
-                A0p = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
-                       -s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
-                A0m = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
-                       +s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
-                A1p = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1+((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
-                A1m = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1-((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
-                
-                ##
-                #Qindex = [0]*Nqb
-                #Qindex[nA] = aA
-                #Qindex[nB] = aB
-                #Q = Spsi[tuple(Qindex)]
-                Q = qt.expect(sig1*sig2, psi)
-                P0p = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-                      +(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-                P0m = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-                     -(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-                P1p = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-                      +(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-                P1m = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-                      -(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-                
-                Plist = [P0p, P0m, P1p, P1m]
-                Alist = [A0p, A0m, A1p, A1m]
-                psi, xi = krausSol(psi, Alist, Plist)
-                xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
+            #if beta1==3:
+            #    A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)##Identity?no
+            #    A1 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(beta2!=3)*1j*s2*np.sin(J2*DeltaT)*sig2
+            #    P1 = (beta2!=3)*np.sin(J2*DeltaT)**2
+            #    P0 = 1-P1
+            #    Plist = [P0, P1]
+            #    Alist = [A0, A1]
+            #    psi, xi = krausSol(psi, Alist, Plist)
+            #    xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+            #elif beta2==3:
+            #    A0 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(np.cos(J1*DeltaT)-(beta1==3)*1j*s1*np.sin(J1*DeltaT)*sig1)
+            #    A1 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(beta1!=3)*1j*s1*np.sin(J1*DeltaT)*sig1
+            #    P1 = (beta1!=3)*np.sin(J1*DeltaT)**2
+            #    P0 = 1-P1
+            #    
+            #    Plist = [P0, P1]
+            #    Alist = [A0, A1]
+            #    psi, xi = krausSol(psi, Alist, Plist)
+            #    xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+            #else:
+            #    A0p = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
+            #           -s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
+            #    A0m = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
+            #           +s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
+            #    A1p = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1+((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
+            #    A1m = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1-((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
+            #    
+            #    Q = qt.expect(sig1*sig2, psi)
+            #    P0p = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+            #          +(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+            #    P0m = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+            #         -(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+            #    P1p = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+            #          +(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+            #    P1m = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+            #          -(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+            #    
+            #    Plist = [P0p, P0m, P1p, P1m]
+            #    Alist = [A0p, A0m, A1p, A1m]
+            #    psi, xi = krausSol(psi, Alist, Plist)
+            #    xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
                 
         ##Update values     
         Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
