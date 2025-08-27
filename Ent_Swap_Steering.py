@@ -40,7 +40,7 @@ def main():
     #J = Nqb*[1]                                            ##equal weak coupling                                         
     J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  ##default values from original paper
     #J = Nqb*[np.pi/4/DeltaT]                               ##equal strong coupling
-    #J = [np.pi/4/DeltaT-0.05+0.1*rng.random() for i in range(Nqb)] ##random offset strong coupling, -0.1(5) works best
+    #J = [np.pi/4/DeltaT-0.35+0.7*rng.random() for i in range(Nqb)] ##random offset strong coupling, -0.1(5) works best
     
     N = 130                                             ##nr of time steps
     M = 100                                             ##number of trajectories
@@ -63,6 +63,7 @@ def main():
     
     ##Initial state
     psi0 = qt.qstate(Nqb*'d')               ##starting in 00...0 state
+    #psi0 = qt.tensor(Nqb*[qt.qstate('u')+qt.qstate('d')])       ##starting in ++...+ state
     psi0 = psi0.unit()
     #psi0 = qt.rand_ket(2**Nqb, dims=[[2]*Nqb,[1]*Nqb])             ##random state
     
@@ -367,50 +368,50 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             elif beta1==beta2:
                 c_op = [np.sqrt(G1/2)*sig1+np.sqrt(G2/2)*sig2, np.sqrt(G1/2)*sig1-np.sqrt(G2/2)*sig2]
                 psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)
-            
+            '''
             ##Kraus operator construction
-            #if beta1==3:
-            #    A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)##Identity?no
-            #    A1 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(beta2!=3)*1j*s2*np.sin(J2*DeltaT)*sig2
-            #    P1 = (beta2!=3)*np.sin(J2*DeltaT)**2
-            #    P0 = 1-P1
-            #    Plist = [P0, P1]
-            #    Alist = [A0, A1]
-            #    psi, xi = krausSol(psi, Alist, Plist)
-            #    xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
-            #elif beta2==3:
-            #    A0 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(np.cos(J1*DeltaT)-(beta1==3)*1j*s1*np.sin(J1*DeltaT)*sig1)
-            #    A1 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(beta1!=3)*1j*s1*np.sin(J1*DeltaT)*sig1
-            #    P1 = (beta1!=3)*np.sin(J1*DeltaT)**2
-            #    P0 = 1-P1
-            #    
-            #    Plist = [P0, P1]
-            #    Alist = [A0, A1]
-            #    psi, xi = krausSol(psi, Alist, Plist)
-            #    xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
-            #else:
-            #    A0p = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
-            #           -s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
-            #    A0m = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
-            #           +s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
-            #    A1p = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1+((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
-            #    A1m = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1-((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
-            #    
-            #    Q = qt.expect(sig1*sig2, psi)
-            #    P0p = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-            #          +(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-            #    P0m = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-            #         -(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-            #    P1p = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-            #          +(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-            #    P1m = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
-            #          -(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
-            #    
-            #    Plist = [P0p, P0m, P1p, P1m]
-            #    Alist = [A0p, A0m, A1p, A1m]
-            #    psi, xi = krausSol(psi, Alist, Plist)
-            #    xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
+            if beta1==3:
+                A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)##Identity?no
+                A1 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(beta2!=3)*1j*s2*np.sin(J2*DeltaT)*sig2
+                P1 = (beta2!=3)*np.sin(J2*DeltaT)**2
+                P0 = 1-P1
+                Plist = [P0, P1]
+                Alist = [A0, A1]
+                psi, xi = krausSol(psi, Alist, Plist)
+                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+            elif beta2==3:
+                A0 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(np.cos(J1*DeltaT)-(beta1==3)*1j*s1*np.sin(J1*DeltaT)*sig1)
+                A1 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(beta1!=3)*1j*s1*np.sin(J1*DeltaT)*sig1
+                P1 = (beta1!=3)*np.sin(J1*DeltaT)**2
+                P0 = 1-P1
                 
+                Plist = [P0, P1]
+                Alist = [A0, A1]
+                psi, xi = krausSol(psi, Alist, Plist)
+                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+            else:
+                A0p = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
+                       -s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
+                A0m = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
+                       +s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
+                A1p = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1+((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
+                A1m = (np.sin(J1*DeltaT)*np.cos(J2*DeltaT)*sig1-((beta1==beta2)+1j*(beta1!=beta2))*np.cos(J1*DeltaT)*np.sin(J2*DeltaT)*sig2)/np.sqrt(2)
+                
+                Q = qt.expect(sig1*sig2, psi)
+                P0p = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                      +(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                P0m = (1-np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2-np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                     -(beta1==beta2)*(-1)**beta1*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                P1p = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                      +(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                P1m = (np.sin(J1*DeltaT)**2*np.cos(J2*DeltaT)**2+np.cos(J1*DeltaT)**2*np.sin(J2*DeltaT)**2
+                      -(beta1==beta2)*0.5*s1*s2*np.sin(2*J1*DeltaT)*np.sin(2*J2*DeltaT)*Q)/2
+                
+                Plist = [P0p, P0m, P1p, P1m]
+                Alist = [A0p, A0m, A1p, A1m]
+                psi, xi = krausSol(psi, Alist, Plist)
+                xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
+            #'''   
         ##Update values     
         Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
         Fid = np.sum((Spsi-Starg)**2)/2**(Nqb+1)
@@ -871,14 +872,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 H[tuple(ind)] *= -1
     
     ##measurement probabilities
-    P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-          +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-    P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-          -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-    P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-          +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-    P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-          -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+    P0p, P0m, P1p, P1m = 0, 0, 0, 0
         
     rtm02 = np.zeros([4]*Nqb)
     rtm12 = np.zeros([4]*Nqb)
@@ -941,6 +935,14 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 
     ##dR2 terms
         if bA != 3 and bB != 3:#and bA == bB
+            P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+                  +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+                  -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+                  +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+                  -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
             ##A terms
             if i != aA and i!=0 and aA!=0:
                 rtm12[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2*S[tuple(indAB)]
@@ -958,9 +960,9 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
     rtm13 = 1/4*(bA == bB)*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(F-Q*S)
             
     if P1p == 0 and P1m !=0:
-        dR2 = (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m
+        dR2 = (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m+(rtm02+rtm03)**2/P0p
     elif P1m == 0 and P1p !=0:
-        dR2 = (rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p
+        dR2 = (rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+(rtm02-rtm03)**2/P0m
     elif P1p !=0 and P1m !=0:
         dR2 = ((rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+
                 (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m)
