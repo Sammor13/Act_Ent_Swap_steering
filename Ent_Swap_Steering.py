@@ -33,7 +33,7 @@ def main():
     rng = np.random.default_rng() 
     
     ##Parameters
-    Nqb = 4                                             ##Number of qubits
+    Nqb = 3                                             ##Number of qubits
     DeltaT = 0.2                                        ##time step length, default: 0.2
     
     ##coupling strength, default: [1, 0.99, 1.01, 1.005, 0.995, 1.003]
@@ -286,6 +286,9 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi0), [4]*Nqb)
     Starg = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psiTarg), [4]*Nqb)
     
+   # Spsi = np.reshape(np.array([qt.expect(plaqS(k),psi0) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
+   # Starg = np.reshape(np.array([qt.expect(plaqS(k),psiTarg) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
+    
     ##subset list
     subset = iniSubset(Nqb)
     #subset = iniLocalSubset(Nqb)
@@ -348,12 +351,16 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 break
             
             ##chosen Pauli operators
-            sig1index = [0]*Nqb
-            sig1index[n1] = alpha1
+            #sig1index = [0]*Nqb
+            #sig1index[n1] = alpha1
+            sig1index = [0]*n1+[alpha1]+[0]*(Nqb-n1-1)
             sig1 = pauliPlaq_tensor[tuple(sig1index)]
-            sig2index = [0]*Nqb
-            sig2index[n2] = alpha2
+            #sig1 = plaqS([0]*n1+[alpha1]+[0]*(Nqb-n1-1))
+            #sig2index = [0]*Nqb
+            #sig2index[n2] = alpha2
+            sig2index = [0]*n2+[alpha2]+[0]*(Nqb-n2-1)
             sig2 = pauliPlaq_tensor[tuple(sig2index)]
+            #sig2 = plaqS([0]*n2+[alpha2]+[0]*(Nqb-n2-1))
             
             ##Time step
             #beta1=z or beta2=z or (beta1=x, beta2=y) or (beta1=y, beta2=x)
@@ -371,7 +378,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             '''
             ##Kraus operator construction
             if beta1==3:
-                A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)##Identity?no
+                A0 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(np.cos(J2*DeltaT)-(beta2==3)*1j*s2*np.sin(J2*DeltaT)*sig2)
                 A1 = (np.cos(J1*DeltaT)-1j*s1*np.sin(J1*DeltaT)*sig1)*(beta2!=3)*1j*s2*np.sin(J2*DeltaT)*sig2
                 P1 = (beta2!=3)*np.sin(J2*DeltaT)**2
                 P0 = 1-P1
@@ -414,6 +421,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             #'''   
         ##Update values     
         Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
+        #Spsi = np.reshape(np.array([qt.expect(plaqS(k),psi) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
         Fid = np.sum((Spsi-Starg)**2)/2**(Nqb+1)
         
         ##stoppage criterion at global cost value eps, corresponding to F=F*
@@ -815,6 +823,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
                     if k != i and k != aA:
                         Sindex = [slice(None)]*Nqb
                         Sindex[nA] = k
+                        #Sindex = [slice(None)]*nA+[k]+[slice(None)]*(Nqb-nA-1)
                         dR[tuple(indA)] += 2*deltaT*sA*JA*int(LeviCivita(aA,k,i))*S[tuple(Sindex)]
         indB[nB] = i
         ##B terms
@@ -827,6 +836,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
                     if k != i and k != aB:
                         Sindex = [slice(None)]*Nqb
                         Sindex[nB] = k
+                        #Sindex = [slice(None)]*nB+[k]+[slice(None)]*(Nqb-nB-1)
                         dR[tuple(indB)] += 2*deltaT*sB*JB*int(LeviCivita(aB,k,i))*S[tuple(Sindex)]
     
     rtm3 = (bA == bB)*np.sqrt(GA*GB)*(F-Q*S)
