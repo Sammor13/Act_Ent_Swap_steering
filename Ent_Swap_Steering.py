@@ -364,11 +364,11 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             
             ##Time step
             #beta1=z or beta2=z or (beta1=x, beta2=y) or (beta1=y, beta2=x)
-            if beta1==3 or beta2==3 or beta1!=beta2:
+            if beta1%3 == 0 or beta2%3 == 0 or beta1!=beta2:
                 eta = (-1)**int(2*rng.random())
-                H = (beta1==3)*s1*J1*sig1+(beta2==3)*s2*J2*sig2+(beta1!=3)*(beta2!=3)*eta*np.sqrt(G1*G2)*sig1*sig2
-                c_op = (beta1!=3)*np.sqrt(G1)*sig1+(1-2*(beta1==2))*eta*1j*(beta2!=3)*np.sqrt(G2)*sig2
-                psi, xi = unitsol(psi, DeltaT, H, c_op, ((beta1!=3)*G1+(beta2!=3)*G2)*DeltaT)
+                H = (beta1%3==0)*s1*J1*sig1+(beta2%3==0)*s2*J2*sig2+(beta1%3!=0)*(beta2%3!=0)*eta*np.sqrt(G1*G2)*sig1*sig2
+                c_op = (beta1%3!=0)*np.sqrt(G1)*sig1+(1-2*(beta1==2))*eta*1j*(beta2%3!=0)*np.sqrt(G2)*sig2
+                psi, xi = unitsol(psi, DeltaT, H, c_op, ((beta1%3!=0)*G1+(beta2%3!=0)*G2)*DeltaT)
                 xi_eta_List[i-1] = (xi, eta)
                 
             #beta1=beta2=x/y  
@@ -798,8 +798,8 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     F = F_tensorized(S, Starg, (aA, bA, nA), (aB, bB, nB), Nqb)
     
     ##<c_eta^\dagger c_eta>
-    avcp = (bA != 3)*GA+(bB != 3)*GB
-    rtm1 = (bA == bB)*(bA != 3)*2*np.sqrt(GA*GB)*Q
+    avcp = (bA%3 != 0)*GA+(bB%3 != 0)*GB
+    rtm1 = (bA == bB)*(bA%3 != 0)*2*np.sqrt(GA*GB)*Q
     avcm = avcp-rtm1
     avcp += rtm1
     
@@ -815,7 +815,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
         indA[nA] = i
         ##A terms
         if i != aA and aA!=0:
-            if bA !=3:
+            if bA%3 !=0:
                 dR[tuple(indA)] -= 2*deltaT*GA*S[tuple(indA)]
                 rtm2[tuple(indA)] -= GA*S[tuple(indA)]
             else:
@@ -828,7 +828,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
         indB[nB] = i
         ##B terms
         if i != aB and aB!=0:
-            if bB !=3:
+            if bB%3 !=0:
                 dR[tuple(indB)] -= 2*deltaT*GB*S[tuple(indB)]
                 rtm2[tuple(indB)] -= GB*S[tuple(indB)]
             else:
@@ -847,7 +847,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     elif avcp !=0 and avcm !=0:
         dR2 = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
     
-    if bA != 3 and bB != 3:
+    if bA%3 != 0 and bB%3 != 0:
         dC = (S-Starg)*dR+dR2
     else:
         dC = -Starg*dR
@@ -895,7 +895,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
     for i,j in itertools.product(range(4), repeat=2):
         indAB[nA] = i
         indAB[nB] = j
-        if (Starg[tuple(indAB)] == 0).all() and bA != 3 and bB != 3:
+        if (Starg[tuple(indAB)] == 0).all() and bA%3 != 0 and bB%3 != 0:
             continue
   
         ##A terms
@@ -904,7 +904,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 dR[tuple(indAB)] -= 2*np.sin(deltaT*JA)**2*S[tuple(indAB)]
             else:
                 dR[tuple(indAB)] -= 2*np.sin(deltaT*JA)**2*S[tuple(indAB)]*(1-np.sin(deltaT*JB)**2)
-            if bA == 3:
+            if bA%3 == 0:
                 for k in range(1,4):
                     if k != i and k != aA:
                         Sindex = [slice(None)]*Nqb
@@ -922,7 +922,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 dR[tuple(indAB)] -= 2*np.sin(deltaT*JB)**2*S[tuple(indAB)]
             else:
                 dR[tuple(indAB)] -= 2*np.sin(deltaT*JB)**2*S[tuple(indAB)]*(1-np.sin(deltaT*JA)**2)
-            if bB == 3:
+            if bB%3 == 0:
                 for k in range(1,4):
                     if k != j and k != aB:
                         Sindex = [slice(None)]*Nqb
@@ -935,7 +935,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                             dR[tuple(indAB)] += sB*np.sin(2*deltaT*JB)*int(LeviCivita(aB,k,j))*S[tuple(Sindex)]*(1-2*np.sin(deltaT*JA)**2)
                             
         ##AB terms
-        if bA == 3 and bB == 3 and i != aA and aA != 0 and j != aB and aB != 0 and i != 0 and j != 0:
+        if bA%3 == 0 and bB%3 == 0 and i != aA and aA != 0 and j != aB and aB != 0 and i != 0 and j != 0:
             for k,l in itertools.product(range(1,4), repeat=2):
                 if k != i and k != aA and l != j and l != aB:
                     Sindex = [slice(None)]*Nqb
@@ -944,7 +944,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                     dR[tuple(indAB)] += sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*int(LeviCivita(aA,k,i))*int(LeviCivita(aB,l,j))*S[tuple(Sindex)]
                 
     ##dR2 terms
-        if bA != 3 and bB != 3:#and bA == bB
+        if bA%3 != 0 and bB%3 != 0:#and bA == bB
             P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
                   +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
             P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
@@ -978,7 +978,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m)
     
     ##assemble
-    if bA != 3 and bB != 3:#and bA == bB
+    if bA%3 != 0 and bB%3 != 0:#and bA == bB
         dC = (S-Starg)*dR+dR2/2
     else:
         dC = -Starg*dR
