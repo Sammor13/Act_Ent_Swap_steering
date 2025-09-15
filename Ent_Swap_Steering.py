@@ -19,6 +19,12 @@ import scipy.special
 from sympy import LeviCivita
 from scipy import stats
 
+import matplotlib as mpl  
+#mpl.rcParams['text.usetex'] = True          ########
+mpl.rcParams['font.family'] = 'serif' 
+
+plt.style.use('seaborn-v0_8-dark-palette')       #seaborn-v0_8-dark-palette
+
 ##Pauli matrices
 s0 = qt.qeye(2)
 sx = qt.sigmax()
@@ -192,7 +198,7 @@ def main():
     if success_Step.any():
         meanN = np.mean(success_Step)
         stdN = np.std(success_Step)
-        modeN = stats.mode(success_Step)
+        modeN = 0#stats.mode(np.array(success_Step))
     else:
         meanN, stdN, modeN = 0, 0, 0
     
@@ -276,18 +282,18 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     slist, aList, bList = coupl_list(K)
         
     ##operator list
-    pauliPlaq_tensor = plaqS_tensor(Nqb)
+    #pauliPlaq_tensor = plaqS_tensor(Nqb)
     
     ##initial state
     psi_List[0] = psi0
     psi = psi0
     
     ##initialize Pauli tensors
-    Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi0), [4]*Nqb)
-    Starg = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psiTarg), [4]*Nqb)
+    #Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi0), [4]*Nqb)
+    #Starg = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psiTarg), [4]*Nqb)
     
-   # Spsi = np.reshape(np.array([qt.expect(plaqS(k),psi0) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
-   # Starg = np.reshape(np.array([qt.expect(plaqS(k),psiTarg) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
+    Spsi = np.reshape(np.array([qt.expect(plaqS(k),psi0) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
+    Starg = np.reshape(np.array([qt.expect(plaqS(k),psiTarg) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
     
     ##subset list
     subset = iniSubset(Nqb)
@@ -353,14 +359,14 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             ##chosen Pauli operators
             #sig1index = [0]*Nqb
             #sig1index[n1] = alpha1
-            sig1index = [0]*n1+[alpha1]+[0]*(Nqb-n1-1)
-            sig1 = pauliPlaq_tensor[tuple(sig1index)]
-            #sig1 = plaqS([0]*n1+[alpha1]+[0]*(Nqb-n1-1))
+            #sig1index = [0]*n1+[alpha1]+[0]*(Nqb-n1-1)
+            #sig1 = pauliPlaq_tensor[tuple(sig1index)]
+            sig1 = plaqS([0]*n1+[alpha1]+[0]*(Nqb-n1-1))
             #sig2index = [0]*Nqb
             #sig2index[n2] = alpha2
-            sig2index = [0]*n2+[alpha2]+[0]*(Nqb-n2-1)
-            sig2 = pauliPlaq_tensor[tuple(sig2index)]
-            #sig2 = plaqS([0]*n2+[alpha2]+[0]*(Nqb-n2-1))
+            #sig2index = [0]*n2+[alpha2]+[0]*(Nqb-n2-1)
+            #sig2 = pauliPlaq_tensor[tuple(sig2index)]
+            sig2 = plaqS([0]*n2+[alpha2]+[0]*(Nqb-n2-1))
             
             ##Time step
             #beta1=z or beta2=z or (beta1=x, beta2=y) or (beta1=y, beta2=x)
@@ -420,14 +426,14 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
             #'''   
         ##Update values     
-        Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
-        #Spsi = np.reshape(np.array([qt.expect(plaqS(k),psi) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
+        #Spsi = np.reshape(qt.expect(pauliPlaq_tensor.flatten(),psi), [4]*Nqb)
+        Spsi = np.reshape(np.array([qt.expect(plaqS(k),psi) for k in np.ndindex(*([4]*Nqb))]), [4]*Nqb)
         Fid = np.sum((Spsi-Starg)**2)/2**(Nqb+1)
         
         ##stoppage criterion at global cost value eps, corresponding to F=F*
         if Fid < eps:
             ##final values
-            psi_List[int((i-1)/Nst)+1:] = (int(N/Nst)-int((i-1)/Nst))*[1]*psi
+            psi_List[int((i-1)/Nst)+1:] = (int(N/Nst)-int((i-1)/Nst))*[psi]#*psi
             global_C[int((i-1)/Nst)+1:] = Fid
             cost = csFct_tensor(Spsi, Starg, Nqb, subset)
             local_C[int((i-1)/Nst)+1:] = sum([pList[j]*cost[j] for j in range(Nqb)])
@@ -535,7 +541,7 @@ def ent_swap_sol(psi, deltaT, c_op):
     rng = np.random.default_rng() 
     #probabilities
     P = np.zeros(4)
-    P[0:2] = qt.expect([c.dag()*c for c in c_op], psi)*deltaT
+    P[0:2] = np.array(qt.expect([c.dag()*c for c in c_op], psi))*deltaT
     P[2:4] = (1-2*P[0:2])/2
     #stochastic measurement outcome
     while 1==1:
