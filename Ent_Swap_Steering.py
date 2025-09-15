@@ -118,29 +118,30 @@ def main():
     plt.savefig('coupl hist.svg')
     
     ##purity of average
-    fig, ax = plt.subplots(figsize=(8,6))
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    plt.ylim(bottom=0, top=1.01)
-    plt.xlim(left=0, right=N)
-    avg_Pur = [(sum([qt.ket2dm(psi) for psi in psi_Distr[:,i]])**2).tr()/M**2 for i in range(int(N/Nst)+1)]
-    np.savetxt('avgPur', avg_Pur)
-    
-    ax.plot(np.arange(0,N+1,Nst), avg_Pur, 'k', label=r'average Purity', linewidth=3)
-    ax.plot(np.arange(0,N+1,Nst), np.ones(int(N/Nst)+1)*(1/2**Nqb), 'k:', label=r'minimum', linewidth=2)
-    
-    ax.set_xlabel(r'$n_t$',fontsize=25)
-    ax.set_ylabel(r'$\mathrm{{tr}}(\overline{{\rho}}^2)$',fontsize=25)
-    ax.minorticks_on()
-    ax.tick_params(length=8)
-    ax.tick_params(which='minor', length=4)
-    ax.locator_params(axis='x', nbins=4)
-    ax.locator_params(axis='y', nbins=6)
-    ax.xaxis.set_minor_locator(MultipleLocator(N/20))
-    
-    plt.tight_layout()
-    plt.savefig('avg pur.pdf', format='pdf')
-    plt.savefig('avg pur.svg', format='svg')
+    if Nqb<5:
+        fig, ax = plt.subplots(figsize=(8,6))
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.ylim(bottom=0, top=1.01)
+        plt.xlim(left=0, right=N)
+        avg_Pur = [(sum([qt.ket2dm(psi) for psi in psi_Distr[:,i]])**2).tr()/M**2 for i in range(int(N/Nst)+1)]
+        np.savetxt('avgPur', avg_Pur)
+        
+        ax.plot(np.arange(0,N+1,Nst), avg_Pur, 'k', label=r'average Purity', linewidth=3)
+        ax.plot(np.arange(0,N+1,Nst), np.ones(int(N/Nst)+1)*(1/2**Nqb), 'k:', label=r'minimum', linewidth=2)
+        
+        ax.set_xlabel(r'$n_t$',fontsize=25)
+        ax.set_ylabel(r'$\mathrm{{tr}}(\overline{{\rho}}^2)$',fontsize=25)
+        ax.minorticks_on()
+        ax.tick_params(length=8)
+        ax.tick_params(which='minor', length=4)
+        ax.locator_params(axis='x', nbins=4)
+        ax.locator_params(axis='y', nbins=6)
+        ax.xaxis.set_minor_locator(MultipleLocator(N/20))
+        
+        plt.tight_layout()
+        plt.savefig('avg pur.pdf', format='pdf')
+        plt.savefig('avg pur.svg', format='svg')
     
     ##Average fidelity/global cost function plot
     fig, ax = plt.subplots(figsize=(8,6))
