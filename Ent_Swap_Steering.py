@@ -20,10 +20,10 @@ from sympy import LeviCivita
 from scipy import stats
 
 import matplotlib as mpl  
-#mpl.rcParams['text.usetex'] = True          ########
+mpl.rcParams['text.usetex'] = True          ########
 mpl.rcParams['font.family'] = 'serif' 
 
-plt.style.use('seaborn-v0_8-dark-palette')       #seaborn-v0_8-dark-palette
+#plt.style.use('seaborn-v0_8-dark-palette')       #seaborn-v0_8-dark-palette
 
 ##Pauli matrices
 s0 = qt.qeye(2)
@@ -293,8 +293,8 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     Spsi = np.array(qt.expect(list(pauliPlaq_tensor.flatten()),psi0)).reshape([4]*Nqb)
     Starg = np.array(qt.expect(list(pauliPlaq_tensor.flatten()),psiTarg)).reshape([4]*Nqb)
     
-    #Spsi = np.array([qt.expect(plaqS(k),psi0) for k in np.ndindex(*([4]*Nqb))]).reshape([4]*Nqb)
-    #Starg = np.array([qt.expect(plaqS(k),psiTarg) for k in np.ndindex(*([4]*Nqb))]).reshape([4]*Nqb)
+    #Spsi = np.array([qt.expect(plaqS(k),psi0) for k in np.ndindex(*([4]*Nqb))]).reshape([4]*Nqb)       #for big Nqb to save memory
+    #Starg = np.array([qt.expect(plaqS(k),psiTarg) for k in np.ndindex(*([4]*Nqb))]).reshape([4]*Nqb)   #for big Nqb to save memory
     
     ##subset list
     subset = iniSubset(Nqb)
@@ -358,16 +358,12 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 break
             
             ##chosen Pauli operators
-            #sig1index = [0]*Nqb
-            #sig1index[n1] = alpha1
             sig1index = [0]*n1+[alpha1]+[0]*(Nqb-n1-1)
             sig1 = pauliPlaq_tensor[tuple(sig1index)]
-            #sig1 = plaqS([0]*n1+[alpha1]+[0]*(Nqb-n1-1))
-            #sig2index = [0]*Nqb
-            #sig2index[n2] = alpha2
+            #sig1 = plaqS([0]*n1+[alpha1]+[0]*(Nqb-n1-1))   #for big Nqb to save memory
             sig2index = [0]*n2+[alpha2]+[0]*(Nqb-n2-1)
             sig2 = pauliPlaq_tensor[tuple(sig2index)]
-            #sig2 = plaqS([0]*n2+[alpha2]+[0]*(Nqb-n2-1))
+            #sig2 = plaqS([0]*n2+[alpha2]+[0]*(Nqb-n2-1))   #for big Nqb to save memory
             
             ##Time step
             #beta1=z or beta2=z or (beta1=x, beta2=y) or (beta1=y, beta2=x)
@@ -428,7 +424,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
             #'''   
         ##Update values     
         Spsi = np.array(qt.expect(list(pauliPlaq_tensor.flatten()),psi)).reshape([4]*Nqb)
-        #Spsi = np.array([qt.expect(plaqS(k),psi) for k in np.ndindex(*([4]*Nqb))]).reshape([4]*Nqb)
+        #Spsi = np.array([qt.expect(plaqS(k),psi) for k in np.ndindex(*([4]*Nqb))]).reshape([4]*Nqb)   #for big Nqb to save memory
         Fid = np.sum((Spsi-Starg)**2)/2**(Nqb+1)
         
         ##stoppage criterion at global cost value eps, corresponding to F=F*
