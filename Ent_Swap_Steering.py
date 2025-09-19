@@ -72,6 +72,9 @@ def main():
     #psi0 = qt.tensor(Nqb*[qt.qstate('u')+qt.qstate('d')])       ##starting in ++...+ state
     psi0 = psi0.unit()
     #psi0 = qt.rand_ket(2**Nqb, dims=[[2]*Nqb,[1]*Nqb])             ##random state
+    #psi0 = qt.ket2dm(psi0)
+    #psi0 = qt.rand_dm(2**Nqb, dims=[[2]*Nqb,[2]*Nqb])             ##random state
+    #psi0 = qt.tensor([qt.qeye(2)]*Nqb).unit()                              ##maximally mixed state
     
     print('psiTarg={0}, psi0={1}'.format(psiTarg, psi0))
     print(r'[N, Nst, DeltaT, J, epsilon, K]={0}, M={1}, pList={2}, F*={3}'.format(params, M, plist, Fstar))    
@@ -124,7 +127,10 @@ def main():
         plt.yticks(fontsize=20)
         plt.ylim(bottom=0, top=1.01)
         plt.xlim(left=0, right=N)
-        avg_Pur = [(sum([qt.ket2dm(psi) for psi in psi_Distr[:,i]])**2).tr()/M**2 for i in range(int(N/Nst)+1)]
+        if psi0.type == 'ket':
+            avg_Pur = [(sum([qt.ket2dm(psi) for psi in psi_Distr[:,i]])**2).tr()/M**2 for i in range(int(N/Nst)+1)]
+        elif psi0.type == 'oper':
+            avg_Pur = [(sum([psi for psi in psi_Distr[:,i]])**2).tr()/M**2 for i in range(int(N/Nst)+1)]
         np.savetxt('avgPur', avg_Pur)
         
         ax.plot(np.arange(0,N+1,Nst), avg_Pur, 'k', label=r'average Purity', linewidth=3)
