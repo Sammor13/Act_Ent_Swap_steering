@@ -20,10 +20,10 @@ from sympy import LeviCivita
 from scipy import stats
 
 import matplotlib as mpl  
-mpl.rcParams['text.usetex'] = True          ########
+mpl.rcParams['text.usetex'] = True
 mpl.rcParams['font.family'] = 'serif' 
 
-#plt.style.use('seaborn-v0_8-dark-palette')       #seaborn-v0_8-dark-palette
+plt.style.use('seaborn-v0_8-dark-palette')
 
 ##Pauli matrices
 s0 = qt.qeye(2)
@@ -211,7 +211,7 @@ def main():
     fig, ax = plt.subplots(figsize=(8,6))
     plt.hist(success_Step, bins=np.arange(0,N+1,2*Nst), alpha=0.5, edgecolor='grey')
     plt.axvline(meanN, color='k', ls='--', linewidth=2, label=r'$\overline{{t}}$')
-    plt.annotate(text='', xy=(meanN+stdN,M/300), xytext=(meanN-stdN,M/300), arrowprops=dict(arrowstyle='|-|'))
+    plt.annotate(text='', xy=(meanN+stdN,modeN[1]/1.5), xytext=(meanN-stdN,modeN[1]/1.5), arrowprops=dict(arrowstyle='|-|'))
     
     plt.xlim(left=0, right=N)
     plt.minorticks_on()
