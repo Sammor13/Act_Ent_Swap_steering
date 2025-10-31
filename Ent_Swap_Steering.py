@@ -82,9 +82,9 @@ def main():
     ##parallel running M trajectories
     results = qt.parallel_map(trajec, [Nqb]*M, task_kwargs=dict(psi0=psi0, psiTarg=psiTarg, param=params, pList=plist), progress_bar=True)
     if Nqb == 2:
-        k_List, xi_eta_List, global_C_List, local_C_List, psi_List, success_Step, S_List = np.array(results, dtype=object).T
+        k_List, xi_eta_List, qb_List, global_C_List, local_C_List, psi_List, success_Step, S_List = np.array(results, dtype=object).T
     else:
-        k_List, xi_eta_List, global_C_List, local_C_List, psi_List, success_Step = np.array(results, dtype=object).T
+        k_List, xi_eta_List, qb_List, global_C_List, local_C_List, psi_List, success_Step = np.array(results, dtype=object).T
     
     ##rearrange Distributions
     global_C_Distr = np.reshape(np.concatenate(global_C_List), (M, int(N/Nst)+1))
@@ -97,6 +97,7 @@ def main():
     np.savetxt('coupl_list', np.concatenate(k_List))
     np.savetxt('success_steps', success_Step)
     np.savetxt('xi_eta_List', np.concatenate(xi_eta_List), fmt='%s')
+    np.savetxt('qb_List', np.concatenate(qb_List), fmt='%s')
     np.savetxt('psi_List', np.concatenate(psi_List), fmt='%s')
     
     ##choose trajectories for plots
@@ -275,9 +276,10 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     
     ##Track chosen coupling, global cost, local cost, measurement outcomes, state
     k_List = np.zeros(N*int(Nqb/2))
+    qb_List = np.zeros(N*int(Nqb/2), dtype=tuple)
     global_C = np.zeros(int(N/Nst)+1)
     local_C = np.zeros(int(N/Nst)+1)
-    xi_eta_List = np.zeros(N, dtype=tuple)
+    xi_eta_List = np.zeros(N*int(Nqb/2), dtype=tuple)
     psi_List = np.zeros(int(N/Nst+1), dtype=object)
     
     ##entanglement entropy for 2 qubits:
@@ -320,6 +322,8 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     for i in range(1, N+1):
         ##starting steering pair
         nStart1 = int(N*rng.random())
+        #nStart1 = (i-1)%Nqb
+
         nStart2 = (nStart1+1)%Nqb
         
         #random.shuffle(qbList)                 ##needed for fully coupled chain
@@ -348,7 +352,8 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
         
             k1, k2 = rng.choice(np.argwhere(deltaC == np.nanmin(deltaC)))
             k_List[(i-1)*int(Nqb/2)+nPair] = k1+K*k2
-            
+            qb_List[(i-1)*int(Nqb/2)+nPair] = (n1, n2)
+
             ##chosen couplings
             s1 = slist[k1]
             s2 = slist[k2]
@@ -378,12 +383,12 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 H = (beta1%3==0)*s1*J1*sig1+(beta2%3==0)*s2*J2*sig2+(beta1%3!=0)*(beta2%3!=0)*eta*np.sqrt(G1*G2)*sig1*sig2
                 c_op = (beta1%3!=0)*np.sqrt(G1)*sig1+(1-2*(beta1==2))*eta*1j*(beta2%3!=0)*np.sqrt(G2)*sig2
                 psi, xi = unitsol(psi, DeltaT, H, c_op, ((beta1%3!=0)*G1+(beta2%3!=0)*G2)*DeltaT)
-                xi_eta_List[i-1] = (xi, eta)
+                xi_eta_List[(i-1)*int(Nqb/2)+nPair] = (xi, eta)
                 
             #beta1=beta2=x/y  
             elif beta1==beta2:
                 c_op = [np.sqrt(G1/2)*sig1+np.sqrt(G2/2)*sig2, np.sqrt(G1/2)*sig1-np.sqrt(G2/2)*sig2]
-                psi, xi_eta_List[i-1] = ent_swap_sol(psi, DeltaT, c_op)
+                psi, xi_eta_List[(i-1)*int(Nqb/2)+nPair] = ent_swap_sol(psi, DeltaT, c_op)
             '''
             ##Kraus operator construction
             if beta1==3:
@@ -394,7 +399,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 Plist = [P0, P1]
                 Alist = [A0, A1]
                 psi, xi = krausSol(psi, Alist, Plist)
-                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+                xi_eta_List[(i-1)*int(Nqb/2)+nPair] = (xi, (-1)**int(2*rng.random()))
             elif beta2==3:
                 A0 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(np.cos(J1*DeltaT)-(beta1==3)*1j*s1*np.sin(J1*DeltaT)*sig1)
                 A1 = (np.cos(J2*DeltaT)-1j*s2*np.sin(J2*DeltaT)*sig2)*(beta1!=3)*1j*s1*np.sin(J1*DeltaT)*sig1
@@ -404,7 +409,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 Plist = [P0, P1]
                 Alist = [A0, A1]
                 psi, xi = krausSol(psi, Alist, Plist)
-                xi_eta_List[i-1] = (xi, (-1)**int(2*rng.random()))
+                xi_eta_List[(i-1)*int(Nqb/2)+nPair] = (xi, (-1)**int(2*rng.random()))
             else:
                 A0p = (np.cos(J1*DeltaT)*np.cos(J2*DeltaT)
                        -s1*s2*np.sin(J1*DeltaT)*np.sin(J2*DeltaT)*((beta1==1)+1j*(beta1==2))*((beta2==1)+1j*(beta2==2))*sig1*sig2)/np.sqrt(2)
@@ -426,7 +431,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 Plist = [P0p, P0m, P1p, P1m]
                 Alist = [A0p, A0m, A1p, A1m]
                 psi, xi = krausSol(psi, Alist, Plist)
-                xi_eta_List[i-1] = (int(xi/2), (-1)**(xi%2))
+                xi_eta_List[(i-1)*int(Nqb/2)+nPair] = (int(xi/2), (-1)**(xi%2))
             #'''   
         ##Update values     
         Spsi = np.array(qt.expect(list(pauliPlaq_tensor.flatten()),psi)).reshape([4]*Nqb)
@@ -446,7 +451,8 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 S_list[int((i-1)/Nst)+1:] = qt.entropy_vn(psi.ptrace((0)))
     
             k_List[i*int(Nqb/2):] = -1
-            xi_eta_List[i:] = [(np.nan, np.nan)]*(N-i)
+            xi_eta_List[i*int(Nqb/2):] = [(np.nan, np.nan)]*(N-i)
+            qb_List[i*int(Nqb/2):] = [(np.nan, np.nan)]*(N-i)
             success_Step = i
             break
         
@@ -462,9 +468,9 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 S_list[int(i/Nst)] = qt.entropy_vn(psi.ptrace((0)))
     
     if Nqb == 2:
-        return k_List, xi_eta_List, global_C, local_C, psi_List, success_Step, S_list
+        return k_List, xi_eta_List, qb_List, global_C, local_C, psi_List, success_Step, S_list
     else:
-        return k_List, xi_eta_List, global_C, local_C, psi_List, success_Step
+        return k_List, xi_eta_List, qb_List, global_C, local_C, psi_List, success_Step
 
 #produce subset lists
 def iniSubset(N):
