@@ -321,7 +321,7 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
     ##Time step loop
     for i in range(1, N+1):
         ##starting steering pair
-        nStart1 = int(N*rng.random())
+        nStart1 = int(Nqb*rng.random())
         #nStart1 = (i-1)%Nqb
 
         nStart2 = (nStart1+1)%Nqb
@@ -451,8 +451,8 @@ def trajec(Nqb, psi0, psiTarg, param, pList):
                 S_list[int((i-1)/Nst)+1:] = qt.entropy_vn(psi.ptrace((0)))
     
             k_List[i*int(Nqb/2):] = -1
-            xi_eta_List[i*int(Nqb/2):] = [(np.nan, np.nan)]*(N-i)
-            qb_List[i*int(Nqb/2):] = [(np.nan, np.nan)]*(N-i)
+            xi_eta_List[i*int(Nqb/2):] = [(np.nan, np.nan)]*(N-i)*int(Nqb/2)
+            qb_List[i*int(Nqb/2):] = [(np.nan, np.nan)]*(N-i)*int(Nqb/2)
             success_Step = i
             break
         
