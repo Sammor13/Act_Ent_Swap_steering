@@ -47,6 +47,7 @@ def main():
     J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  ##default values from original paper
     #J = Nqb*[np.pi/4/DeltaT]                               ##equal strong coupling
     #J = [np.pi/4/DeltaT-0.35+0.7*rng.random() for i in range(Nqb)] ##random offset strong coupling, -0.1(5) works best
+    #J = [np.pi/4/DeltaT-0.35+0.7*(i%2) for i in range(Nqb)] ##periodic offset strong coupling
     
     N = 130                                             ##nr of time steps
     M = 100                                             ##number of trajectories
@@ -207,34 +208,33 @@ def main():
         meanN = np.mean(success_Step)
         stdN = np.std(success_Step)
         modeN = stats.mode(np.array(success_Step, dtype=float))
-    else:
-        meanN, stdN, modeN = 0, 0, 0
+        medN = np.median(success_Step)
     
-    print(r'$N_{{suc}}=${0}, $N^{{med}}_{{suc}}=${1}, $STDN^{{med}}_{{suc}}=${2}, $ModeN^{{med}}_{{suc}}=${3}'
-          .format(meanN, np.median(success_Step), stdN, modeN))
+        print(r'$N_{{suc}}=${0}, $N^{{med}}_{{suc}}=${1}, $STDN^{{med}}_{{suc}}=${2}, $ModeN^{{med}}_{{suc}}=${3}'
+          .format(meanN, medN, stdN, modeN))
     
-    success_Step -=1         ##for correct representation because bins are defined as [n,n+1)
-    
-    fig, ax = plt.subplots(figsize=(8,6))
-    plt.hist(success_Step, bins=np.arange(0,N+1,2*Nst), alpha=0.5, edgecolor='grey')
-    plt.axvline(meanN, color='k', ls='--', linewidth=2, label=r'$\overline{{t}}$')
-    plt.annotate(text='', xy=(meanN+stdN,modeN[1]/1.5), xytext=(meanN-stdN,modeN[1]/1.5), arrowprops=dict(arrowstyle='|-|'))
-    
-    plt.xlim(left=0, right=N)
-    plt.minorticks_on()
-    plt.xlabel(r'$n_t$', fontsize=25)
-    plt.ylabel(r'Number of trajectories', fontsize=25)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    plt.yscale('log')
-    ax.tick_params(length=8)            
-    ax.tick_params(which='minor', length=4)
-    plt.locator_params(axis='x', nbins=4)
-    ax.xaxis.set_minor_locator(MultipleLocator(N/20))
-    
-    plt.tight_layout()    
-    plt.savefig('success step.pdf', format='pdf')
-    plt.savefig('success step.svg', format='svg') 
+        success_Step -=1         ##for correct representation because bins are defined as [n,n+1)
+        
+        fig, ax = plt.subplots(figsize=(8,6))
+        plt.hist(success_Step, bins=np.arange(0,N+1,2*Nst), alpha=0.5, edgecolor='grey')
+        plt.axvline(meanN, color='k', ls='--', linewidth=2, label=r'$\overline{{t}}$')
+        plt.annotate(text='', xy=(meanN+stdN,modeN[1]/1.5), xytext=(meanN-stdN,modeN[1]/1.5), arrowprops=dict(arrowstyle='|-|'))
+        
+        plt.xlim(left=0, right=N)
+        plt.minorticks_on()
+        plt.xlabel(r'$n_t$', fontsize=25)
+        plt.ylabel(r'Number of trajectories', fontsize=25)
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.yscale('log')
+        ax.tick_params(length=8)            
+        ax.tick_params(which='minor', length=4)
+        plt.locator_params(axis='x', nbins=4)
+        ax.xaxis.set_minor_locator(MultipleLocator(N/20))
+        
+        plt.tight_layout()    
+        plt.savefig('success step.pdf', format='pdf')
+        plt.savefig('success step.svg', format='svg') 
 
     ##Average entanglement plot for 2 qubits
     if Nqb==2: 
@@ -810,7 +810,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     Q = S[tuple(Qindex)]
     
     ##F tensor
-    F = F_tensorized(S, Starg, (aA, bA, nA), (aB, bB, nB), Nqb)
+    F = F_tensorized(S, (aA, bA, nA), (aB, bB, nB), Nqb)
     
     ##<c_eta^\dagger c_eta>
     avcp = (bA%3 != 0)*GA+(bB%3 != 0)*GB
@@ -883,7 +883,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
     Q = S[tuple(Qindex)]
     
     ##F tensor
-    F = F_tensorized(S, Starg, (aA, bA, nA), (aB, bB, nB), Nqb)
+    F = F_tensorized(S, (aA, bA, nA), (aB, bB, nB), Nqb)
     
     ##H tensor
     H = F
@@ -895,6 +895,15 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
             ind[nB] = muB
             if muA != aA and muB != aB:
                 H[tuple(ind)] *= -1
+                
+    ##D and E tensor
+    D_S = D_tensor(S, (aA, bA, nA), (aB, bB, nB), Nqb)
+    E_S = D_S
+    
+    for muA in [0, aA]:
+        ind = [slice(None)]*Nqb
+        ind[nA] = muA
+        E_S[tuple(ind)] *= -1
     
     ##measurement probabilities
     P0p, P0m, P1p, P1m = 0, 0, 0, 0
@@ -996,19 +1005,22 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
         P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
               -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2       
         
-        rtm03 = 1/4*(bA == bB)*(-1)**bA*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(H-Q*S)
-        rtm13 = 1/4*(bA == bB)*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(F-Q*S)
-            
-        if P1p == 0 and P1m !=0:
-            dR2 = (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m+(rtm02+rtm03)**2/P0p
-        elif P1m == 0 and P1p !=0:
-            dR2 = (rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+(rtm02-rtm03)**2/P0m
-        elif P1p !=0 and P1m !=0:
-            dR2 = ((rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+
-                    (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m)
+        rtm03 = 1/4*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*((bA == bB)*(-1)**bA*(H-Q*S)
+                                                                   +(bA != bB)*E_S)
+        rtm13 = 1/4*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*((bA == bB)*(F-Q*S)+(bA != bB)*D_S)
+        
+        dR2 = np.zeros([4]*Nqb)
+        if P1p != 0:
+            dR2 += (rtm12+rtm13)**2/P1p
+        if P0p != 0:
+            dR2 += (rtm02+rtm03)**2/P0p
+        if P1m != 0:
+            dR2 += (rtm12-rtm13)**2/P1m
+        if P0m != 0:
+            dR2 += (rtm02-rtm03)**2/P0m
     
     ##assemble
-    if bA%3 != 0 and bB%3 != 0:#and bA == bB
+    #if bA%3 != 0 and bB%3 != 0:#and bA == bB
         dC = (S-Starg)*dR+dR2/2
     else:
         dC = -Starg*dR
@@ -1016,7 +1028,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
     return dC
 
 ##F tensor
-def F_tensorized(S, Starg, A, B, Nqb):
+def F_tensorized(S, A, B, Nqb):
     aA, bA, nA = A
     aB, bB, nB = B
     
@@ -1025,43 +1037,87 @@ def F_tensorized(S, Starg, A, B, Nqb):
         F = S
     else:
         ind = [slice(None)]*Nqb
-        for muA in range(4):
-            for muB in range(4):
-                ind[nA] = muA
-                ind[nB] = muB
+        for muA, muB in itertools.product(range(4), repeat=2):
+            ind[nA] = muA
+            ind[nB] = muB
+            
+            if (muA==aA or muA==0) and (muB==aB or muB==0):
+                Findex = [slice(None)]*Nqb
+                Findex[nA] = (muA==0)*aA
+                Findex[nB] = (muB==0)*aB
+                F[tuple(ind)] = S[tuple(Findex)]
+            
+            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
+                for k1 in range(1,4):
+                    if k1 != aA and k1 != muA:
+                        for k2 in range(1,4):
+                            if k2 != aB and k2 != muB:
+                                Sindex = [slice(None)]*Nqb
+                                Sindex[nA] = k1
+                                Sindex[nB] = k2
+                                F[tuple(ind)] += int(LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2))*S[tuple(Sindex)]
                 
-                if (muA==aA or muA==0) and (muB==aB or muB==0):
-                    Findex = [slice(None)]*Nqb
-                    Findex[nA] = (muA==0)*aA
-                    Findex[nB] = (muB==0)*aB
-                    F[tuple(ind)] = S[tuple(Findex)]
-                
-                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB!=0:
-                    for k1 in range(1,4):
-                        if k1 != aA and k1 != muA:
-                            for k2 in range(1,4):
-                                if k2 != aB and k2 != muB:
-                                    Sindex = [slice(None)]*Nqb
-                                    Sindex[nA] = k1
-                                    Sindex[nB] = k2
-                                    F[tuple(ind)] += int(LeviCivita(aA,muA,k1)*LeviCivita(aB,muB,k2))*S[tuple(Sindex)]
-                    
-                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
-                    for k2 in range(1,4):
-                        if k2 != aB and k2 != muB:
-                            Sindex = [slice(None)]*Nqb
-                            Sindex[nA] = muA
-                            Sindex[nB] = k2
-                            F[tuple(ind)] += int(LeviCivita(aB,muB,k2))*S[tuple(Sindex)]
-                elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
-                    for k1 in range(1,4):
-                        if k1 != aA and k1 != muA:
-                            Sindex = [slice(None)]*Nqb
-                            Sindex[nA] = k1
-                            Sindex[nB] = muB
-                            F[tuple(ind)] += int(LeviCivita(aA,muA,k1))*S[tuple(Sindex)]
+            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA==0 and aB!=0:
+                for k2 in range(1,4):
+                    if k2 != aB and k2 != muB:
+                        Sindex = [slice(None)]*Nqb
+                        Sindex[nA] = muA
+                        Sindex[nB] = k2
+                        F[tuple(ind)] += int(LeviCivita(aB,muB,k2))*S[tuple(Sindex)]
+            elif muA != 0 and muA != aA and muB != 0 and muB != aB and aA!=0 and aB==0:
+                for k1 in range(1,4):
+                    if k1 != aA and k1 != muA:
+                        Sindex = [slice(None)]*Nqb
+                        Sindex[nA] = k1
+                        Sindex[nB] = muB
+                        F[tuple(ind)] += int(LeviCivita(aA,muA,k1))*S[tuple(Sindex)]
                             
     return F
+
+##D tensor
+def D_tensor(S, A, B, Nqb):
+    aA, bA, nA = A
+    aB, bB, nB = B
+    
+    D = np.zeros([4]*Nqb)
+    
+    ind = [slice(None)]*Nqb
+    
+    if aA !=0:
+        for muA in range(1,4):
+            if muA != aA:
+                ind[nA] = muA
+                ind[nB] = 0
+                
+                Sindex = [slice(None)]*Nqb
+                Sindex[nA] = 6-muA-aA
+                Sindex[nB] = aB
+                D[tuple(ind)] = -int(LeviCivita(aA,muA,6-aA-muA))*S[tuple(Sindex)]
+                
+                if aB != 0:
+                    ind[nB] = aB
+                    Sindex[nB] = 0
+                    D[tuple(ind)] = -int(LeviCivita(aA,muA,6-aA-muA))*S[tuple(Sindex)]
+    
+    ind = [slice(None)]*Nqb
+    
+    if aB !=0:
+        for muB in range(1,4):
+            if muB != aB:
+                ind[nB] = muB
+                ind[nA] = 0
+                
+                Sindex = [slice(None)]*Nqb
+                Sindex[nB] = 6-muB-aB
+                Sindex[nA] = aA
+                D[tuple(ind)] = -int(LeviCivita(aB,muB,6-aB-muB))*S[tuple(Sindex)]
+                
+                if aA != 0:
+                    ind[nA] = aA
+                    Sindex[nA] = 0
+                    D[tuple(ind)] = -int(LeviCivita(aB,muB,6-aB-muB))*S[tuple(Sindex)]
+    
+    return D
 
 ##run main program
 if __name__ == '__main__':
