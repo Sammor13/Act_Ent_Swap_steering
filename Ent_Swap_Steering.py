@@ -960,37 +960,52 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 
     ##dR2 terms
         if bA%3 != 0 and bB%3 != 0:#and bA == bB
-            P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-                  +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-            P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-                  -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-            P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-                  +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-            P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-                  -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            #P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+            #      +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            #P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+            #      -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            #P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+            #      +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+            #P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+            #      -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
             ##A terms
             if i != aA and i!=0 and aA!=0:
                 rtm12[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2*S[tuple(indAB)]
+                
+                if j==aB or j==0 or aB==0:
+                    rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
             ##B terms
             if j != aB and j!=0 and aB!=0:
                 rtm12[tuple(indAB)] -= np.sin(JB*deltaT)**2*np.cos(JA*deltaT)**2*S[tuple(indAB)]
+                
+                if i==aA or i==0 or aA==0:
+                    rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
             
             ##AB terms
-            if i != aA and i!=0 and aA!=0 and (j==aB or j==0 or aB==0):
-                rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
-            elif j != aB and j!=0 and aB!=0 and (i==aA or i==0 or aA==0):
-                rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
+            #if i != aA and i!=0 and aA!=0 and (j==aB or j==0 or aB==0):
+            #    rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
+            #elif j != aB and j!=0 and aB!=0 and (i==aA or i==0 or aA==0):
+            #    rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
+    if bA%3 != 0 and bB%3 != 0:#and bA == bB
+        P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+              +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+        P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+              -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+        P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+              +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+        P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
+              -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2       
+        
+        rtm03 = 1/4*(bA == bB)*(-1)**bA*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(H-Q*S)
+        rtm13 = 1/4*(bA == bB)*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(F-Q*S)
             
-    rtm03 = 1/4*(bA == bB)*(-1)**bA*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(H-Q*S)
-    rtm13 = 1/4*(bA == bB)*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*(F-Q*S)
-            
-    if P1p == 0 and P1m !=0:
-        dR2 = (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m+(rtm02+rtm03)**2/P0p
-    elif P1m == 0 and P1p !=0:
-        dR2 = (rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+(rtm02-rtm03)**2/P0m
-    elif P1p !=0 and P1m !=0:
-        dR2 = ((rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+
-                (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m)
+        if P1p == 0 and P1m !=0:
+            dR2 = (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m+(rtm02+rtm03)**2/P0p
+        elif P1m == 0 and P1p !=0:
+            dR2 = (rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+(rtm02-rtm03)**2/P0m
+        elif P1p !=0 and P1m !=0:
+            dR2 = ((rtm12+rtm13)**2/P1p+(rtm02+rtm03)**2/P0p+
+                    (rtm12-rtm13)**2/P1m+(rtm02-rtm03)**2/P0m)
     
     ##assemble
     if bA%3 != 0 and bB%3 != 0:#and bA == bB
