@@ -904,7 +904,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
     for i,j in itertools.product(range(4), repeat=2):
         indAB[nA] = i
         indAB[nB] = j
-        if (Starg[tuple(indAB)] == 0).all() and bA%3 != 0 and bB%3 != 0:
+        if (Starg[tuple(indAB)] == 0).all() and bA%3 == 0 and bB%3 == 0:
             continue
   
         ##A terms
