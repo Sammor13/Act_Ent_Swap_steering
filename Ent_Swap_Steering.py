@@ -4,7 +4,7 @@
 Created on Wed Jul 28 14:40:09 2021
 
 @author: Samuel Morales
-TODO: save traj, add Starg=0 to non-exact cost fct
+TODO: save traj, move plots to separate file, add (coupl=NN/full, closed boundary, subset, exact/approx cf, exact/approx sim, non-improve) to traj parameters
 """
  
 import numpy as np
@@ -21,7 +21,7 @@ from scipy import stats
 
 import matplotlib as mpl  
 mpl.rcParams['text.usetex'] = True
-mpl.rcParams['font.family'] = 'serif' 
+mpl.rcParams['font.family'] = 'serif'
 
 plt.style.use('seaborn-v0_8-dark-palette')
 
@@ -46,7 +46,7 @@ def main():
     #J = Nqb*[1]                                            ##equal weak coupling                                         
     J = [1, 0.99, 1.01, 1.005, 0.995, 1.003, 0.997, 1.007]  ##default values from original paper
     #J = Nqb*[np.pi/4/DeltaT]                               ##equal strong coupling
-    #J = [np.pi/4/DeltaT-0.35+0.7*rng.random() for i in range(Nqb)] ##random offset strong coupling, -0.1(5) works best
+    #J = [np.pi/4/DeltaT-0.35+0.7*rng.random() for i in range(Nqb)] ##random offset strong coupling
     #J = [np.pi/4/DeltaT-0.35+0.7*(i%2) for i in range(Nqb)] ##periodic offset strong coupling
     
     N = 130                                             ##nr of time steps
@@ -713,7 +713,6 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                     break
             continue
         
-        #dC = dC_tensorized(S, Starg, deltaT, (sA, JA, GA), (sB, JB, GB), (aA, bA, nA), (aB, bB, nB), Nqb)
         dR, dR2 = dC_tensorized(S, Starg, deltaT, (sA, JA, GA), (sB, JB, GB), (aA, bA, nA), (aB, bB, nB), Nqb)
 
         if bA%3 != 0 and bB%3 != 0:
@@ -722,9 +721,6 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
             dC = -Starg*dR
         
         ##assemble
-        #for l in range(Nqb-1):
-        #    if p[l] == 0:
-        #        continue
         for l in np.arange(Nqb-1)[np.array(p[:-1])!=0]:
             deltaf = 0
             for s in subset[l]:
@@ -732,7 +728,6 @@ def expCostF_tensorized(S, Starg, J, Gamma, deltaT, p, nA, nB, Nqb, K, subset):
                 deltaf += np.sum(dC[tuple(ind)])
             costf[coupl] += p[l]*deltaf/scipy.special.binom(Nqb,l+1)/2**(l+1)
             
-        #costf[coupl] += p[-1]*np.sum(dC)/2**Nqb
         costf[coupl] += p[-1]*np.sum(-Starg*dR)/2**Nqb
         
     return costf
@@ -791,9 +786,6 @@ def expCostF_tensorized_exact(S, Starg, J, deltaT, p, nA, nB, Nqb, K, subset):
         dC = dC_tensorized_exact(S, Starg, deltaT, (sA, JA), (sB, JB), (aA, bA, nA), (aB, bB, nB), Nqb)
         
         ##assemble
-        #for l in range(Nqb-1):
-        #    if p[l] == 0:
-        #        continue
         for l in np.arange(Nqb-1)[np.array(p[:-1])!=0]:
             deltaf = 0
             for s in subset[l]:
@@ -813,22 +805,7 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     aA, bA, nA = kA
     aB, bB, nB = kB
     
-    Qindex = [0]*Nqb
-    Qindex[nA] = aA
-    Qindex[nB] = aB
-    Q = S[tuple(Qindex)]
-    
-    ##F tensor  ##TODO: move into bA!=3,bB!=3 condition
-    F = F_tensorized(S, (aA, bA, nA), (aB, bB, nB), Nqb)
-    
-    ##<c_eta^\dagger c_eta>
-    avcp = (bA%3 != 0)*GA+(bB%3 != 0)*GB
-    rtm1 = (bA == bB)*(bA%3 != 0)*2*np.sqrt(GA*GB)*Q
-    avcm = avcp-rtm1
-    avcp += rtm1
-    
-    #dC = np.zeros([4]*Nqb)
-    
+    ##dR calculation
     dR = np.zeros([4]*Nqb)
     dR2 = np.zeros([4]*Nqb)
     rtm2 = np.zeros([4]*Nqb)
@@ -836,6 +813,9 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
     indA = [slice(None)]*Nqb
     indB = [slice(None)]*Nqb
     for i in range(1,4):
+        if (Starg[tuple(indA)] == 0).all() and (Starg[tuple(indB)] == 0).all() and (bA%3 == 0 or bB%3 == 0):
+            continue
+
         indA[nA] = i
         ##A terms
         if i != aA and aA!=0:
@@ -863,20 +843,29 @@ def dC_tensorized(S, Starg, deltaT, A, B, kA, kB, Nqb):
                         #Sindex = [slice(None)]*nB+[k]+[slice(None)]*(Nqb-nB-1)
                         dR[tuple(indB)] += 2*deltaT*sB*JB*int(LeviCivita(aB,k,i))*S[tuple(Sindex)]
     
-    rtm3 = (bA == bB)*np.sqrt(GA*GB)*(F-Q*S)
-    if avcp == 0 and avcm !=0:
-        dR2 = deltaT*(rtm2-rtm3)**2/avcm
-    elif avcm == 0 and avcp !=0:
-        dR2 = deltaT*(rtm2+rtm3)**2/avcp
-    elif avcp !=0 and avcm !=0:
-        dR2 = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
-    
-    #if bA%3 != 0 and bB%3 != 0:
-    #    dC = (S-Starg)*dR+dR2
-    #else:
-    #    dC = -Starg*dR
+    if bA%3 !=0 and bB%3 !=0:
+        Qindex = [0]*Nqb
+        Qindex[nA] = aA
+        Qindex[nB] = aB
+        Q = S[tuple(Qindex)]
         
-    #return dC
+        ##F tensor
+        F = F_tensorized(S, (aA, bA, nA), (aB, bB, nB), Nqb)
+        
+        ##<c_eta^\dagger c_eta>
+        avcp = GA+GB
+        rtm1 = (bA == bB)*2*np.sqrt(GA*GB)*Q
+        avcm = avcp-rtm1
+        avcp += rtm1
+
+        rtm3 = (bA == bB)*np.sqrt(GA*GB)*(F-Q*S)
+        if avcp == 0 and avcm !=0:
+            dR2 = deltaT*(rtm2-rtm3)**2/avcm
+        elif avcm == 0 and avcp !=0:
+            dR2 = deltaT*(rtm2+rtm3)**2/avcp
+        elif avcp !=0 and avcm !=0:
+            dR2 = deltaT*((rtm2+rtm3)**2/avcp+(rtm2-rtm3)**2/avcm)
+    
     return dR, dR2
 
 ##dC tensor:
@@ -887,51 +876,20 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
     aA, bA, nA = kA
     aB, bB, nB = kB
     
-    Qindex = [0]*Nqb
-    Qindex[nA] = aA
-    Qindex[nB] = aB
-    Q = S[tuple(Qindex)]
-    
-    ##F tensor #TODO: move into bA!=3,bB!=3 condition
-    F = F_tensorized(S, (aA, bA, nA), (aB, bB, nB), Nqb)
-    
-    ##H tensor
-    H = np.copy(F)
-    
-    if aA!=0 and aB!=0:
-        ind = [slice(None)]*Nqb
-        for muA, muB in itertools.product(range(1,4), repeat=2):
-            ind[nA] = muA
-            ind[nB] = muB
-            if muA != aA and muB != aB:
-                H[tuple(ind)] *= -1
-                
-    ##D and E tensor
-    D_S = D_tensor(S, (aA, bA, nA), (aB, bB, nB), Nqb)
-    E_S = np.copy(D_S)
-    
-    for muA in [0, aA]:
-        ind = [slice(None)]*Nqb
-        ind[nA] = muA
-        E_S[tuple(ind)] *= -1
-    
-    ##measurement probabilities
-    #P0p, P0m, P1p, P1m = 0, 0, 0, 0
-        
-    rtm02 = np.zeros([4]*Nqb)
-    rtm12 = np.zeros([4]*Nqb)
-    
     ###dR calculation
     dR = np.zeros([4]*Nqb)
+    rtm02 = np.zeros([4]*Nqb)
+    rtm12 = np.zeros([4]*Nqb)
     
     indAB = [slice(None)]*Nqb
     
     for i,j in itertools.product(range(4), repeat=2):
-        indAB[nA] = i
-        indAB[nB] = j
         if (Starg[tuple(indAB)] == 0).all() and (bA%3 == 0 or bB%3 == 0):
             continue
-  
+        
+        indAB[nA] = i
+        indAB[nB] = j
+
         ##A terms
         if i != aA and aA!=0 and i !=0:
             if j == 0 or j == aB:##or aB==0:?
@@ -978,15 +936,7 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                     dR[tuple(indAB)] += sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*int(LeviCivita(aA,k,i))*int(LeviCivita(aB,l,j))*S[tuple(Sindex)]
                 
     ##dR2 terms
-        if bA%3 != 0 and bB%3 != 0:#and bA == bB
-            #P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-            #      +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-            #P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-            #      -(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-            #P1p = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-            #      +(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
-            #P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
-            #      -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
+        if bA%3 != 0 and bB%3 != 0:
             ##A terms
             if i != aA and i!=0 and aA!=0:
                 rtm12[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2*S[tuple(indAB)]
@@ -999,14 +949,36 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
                 
                 if i==aA or i==0 or aA==0:
                     rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
-            
-            ##AB terms
-            #if i != aA and i!=0 and aA!=0 and (j==aB or j==0 or aB==0):
-            #    rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
-            #elif j != aB and j!=0 and aB!=0 and (i==aA or i==0 or aA==0):
-            #    rtm02[tuple(indAB)] -= np.sin(JA*deltaT)**2*np.sin(JB*deltaT)**2*S[tuple(indAB)]
     
     if bA%3 != 0 and bB%3 != 0:#and bA == bB
+        ##2-qubit correlation Q
+        Qindex = [0]*Nqb
+        Qindex[nA] = aA
+        Qindex[nB] = aB
+        Q = S[tuple(Qindex)]
+        
+        ##F tensor
+        F = F_tensorized(S, (aA, bA, nA), (aB, bB, nB), Nqb)
+        
+        ##H tensor
+        H = np.copy(F)
+        if aA!=0 and aB!=0:
+            ind = [slice(None)]*Nqb
+            for muA, muB in itertools.product(range(1,4), repeat=2):
+                ind[nA] = muA
+                ind[nB] = muB
+                if muA != aA and muB != aB:
+                    H[tuple(ind)] *= -1
+                    
+        ##D and E tensor
+        D_S = D_tensor(S, (aA, bA, nA), (aB, bB, nB), Nqb)
+        E_S = np.copy(D_S)
+        for muA in [0, aA]:
+            ind = [slice(None)]*Nqb
+            ind[nA] = muA
+            E_S[tuple(ind)] *= -1
+
+        ##probabilities       
         P0p = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
               +(bA==bB)*(-1)**bA*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2
         P0m = (1-np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2-np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
@@ -1016,10 +988,12 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
         P1m = (np.sin(JA*deltaT)**2*np.cos(JB*deltaT)**2+np.cos(JA*deltaT)**2*np.sin(JB*deltaT)**2
               -(bA==bB)*0.5*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*Q)/2       
         
+        ##eta-dependent terms
         rtm03 = 1/4*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*((bA == bB)*(-1)**bA*(H-Q*S)
                                                                    +(bA != bB)*E_S)
         rtm13 = 1/4*sA*sB*np.sin(2*JA*deltaT)*np.sin(2*JB*deltaT)*((bA == bB)*(F-Q*S)+(bA != bB)*D_S)
         
+        ##dR2 assembly
         dR2 = np.zeros([4]*Nqb)
         if P1p != 0:
         #if not np.isclose(P1p, 0):
@@ -1035,7 +1009,6 @@ def dC_tensorized_exact(S, Starg, deltaT, A, B, kA, kB, Nqb):
             dR2 += (rtm02-rtm03)**2/P0m
     
     ##assemble
-    #if bA%3 != 0 and bB%3 != 0:#and bA == bB
         dC = (S-Starg)*dR+dR2/2
     else:
         dC = -Starg*dR
@@ -1098,39 +1071,66 @@ def D_tensor(S, A, B, Nqb):
     
     ind = [slice(None)]*Nqb
     
-    if aA !=0:
-        for muA in range(1,4):
-            if muA != aA:
-                ind[nA] = muA
-                ind[nB] = 0
-                
-                Sindex = [slice(None)]*Nqb
-                Sindex[nA] = 6-muA-aA
-                Sindex[nB] = aB
-                D[tuple(ind)] -= int(LeviCivita(aA,muA,6-aA-muA))*S[tuple(Sindex)]
-                
-                if aB != 0:
-                    ind[nB] = aB
-                    Sindex[nB] = 0
-                    D[tuple(ind)] -= int(LeviCivita(aA,muA,6-aA-muA))*S[tuple(Sindex)]
+    #if aA !=0:
+    #    for muA in range(1,4):
+    #        if muA != aA:
+    #            ind[nA] = muA
+    #            ind[nB] = 0
+    #            
+    #            Sindex = [slice(None)]*Nqb
+    #            Sindex[nA] = 6-muA-aA
+    #            Sindex[nB] = aB
+    #            D[tuple(ind)] -= int(LeviCivita(aA,muA,6-aA-muA))*S[tuple(Sindex)]
+    #            
+    #            if aB != 0:
+    #                ind[nB] = aB
+    #                Sindex[nB] = 0
+    #                D[tuple(ind)] -= int(LeviCivita(aA,muA,6-aA-muA))*S[tuple(Sindex)]
     
-    ind = [slice(None)]*Nqb
+    #if aB !=0:
+    #    for muB in range(1,4):
+    #        if muB != aB:
+    #            ind[nB] = muB
+    #            ind[nA] = 0
+    #            
+    #            Sindex = [slice(None)]*Nqb
+    #            Sindex[nB] = 6-muB-aB
+    #            Sindex[nA] = aA
+    #            D[tuple(ind)] -= int(LeviCivita(aB,muB,6-aB-muB))*S[tuple(Sindex)]
+    #            
+    #            if aA != 0:
+    #                ind[nA] = aA
+    #                Sindex[nA] = 0
+    #                D[tuple(ind)] =- int(LeviCivita(aB,muB,6-aB-muB))*S[tuple(Sindex)]
     
-    if aB !=0:
-        for muB in range(1,4):
-            if muB != aB:
-                ind[nB] = muB
-                ind[nA] = 0
-                
-                Sindex = [slice(None)]*Nqb
-                Sindex[nB] = 6-muB-aB
-                Sindex[nA] = aA
-                D[tuple(ind)] -= int(LeviCivita(aB,muB,6-aB-muB))*S[tuple(Sindex)]
-                
-                if aA != 0:
-                    ind[nA] = aA
-                    Sindex[nA] = 0
-                    D[tuple(ind)] =- int(LeviCivita(aB,muB,6-aB-muB))*S[tuple(Sindex)]
+    for i in range(1,4):
+        if aA != 0 and i != aA:
+            ind[nA] = i
+            ind[nB] = 0
+
+            Sindex = [slice(None)]*Nqb
+            Sindex[nA] = 6-i-aA
+            Sindex[nB] = aB
+            D[tuple(ind)] -= int(LeviCivita(aA,i,6-i-aA))*S[tuple(Sindex)]
+
+            if aB != 0:
+                ind[nB] = aB
+                Sindex[nB] = 0
+                D[tuple(ind)] -= int(LeviCivita(aA,i,6-i-aA))*S[tuple(Sindex)]
+        
+        if aB != 0 and i != aB:
+            ind[nB] = i
+            ind[nA] = 0
+
+            Sindex = [slice(None)]*Nqb
+            Sindex[nB] = 6-i-aB
+            Sindex[nA] = aA
+            D[tuple(ind)] -= int(LeviCivita(aB,i,6-i-aB))*S[tuple(Sindex)]
+
+            if aA != 0:
+                ind[nA] = aA
+                Sindex[nA] = 0
+                D[tuple(ind)] -= int(LeviCivita(aB,i,6-i-aB))*S[tuple(Sindex)]
     
     return D
 
