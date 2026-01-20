@@ -216,9 +216,15 @@ def main():
         success_Step -=1         ##for correct representation because bins are defined as [n,n+1)
         
         fig, ax = plt.subplots(figsize=(8,6))
-        plt.hist(success_Step, bins=np.arange(0,N+1,2*Nst), alpha=0.5, edgecolor='grey')
-        plt.axvline(meanN, color='k', ls='--', linewidth=2, label=r'$\overline{{t}}$')
-        plt.annotate(text='', xy=(meanN+stdN,modeN[1]/1.5), xytext=(meanN-stdN,modeN[1]/1.5), arrowprops=dict(arrowstyle='|-|'))
+        y,x,_ = plt.hist(success_Step, bins=np.arange(0,N+1,2*Nst), alpha=0.5, edgecolor='grey')
+        #plt.axvline(meanN, color='k', ls='--', linewidth=2, label=r'$\overline{{t}}$')
+        #plt.annotate(text='', xy=(meanN+stdN,modeN[1]/1.5), xytext=(meanN-stdN,modeN[1]/1.5), arrowprops=dict(arrowstyle='|-|'))
+        
+        plt.axvline(medN, color='k', ls='--', linewidth=2)
+        plt.axvline(modeN[0], color='k', ls='-', linewidth=2)
+        fwhmL, fwhmR = 2*Nst*np.where(y>=np.max(y)/2)[0][0], 2*Nst*np.where(y>=np.max(y)/2)[0][-1]
+        print('FWHM: {0}, {1}'.format(fwhmL, fwhmR))
+        plt.annotate(text='', xy=(fwhmL,np.max(y)/2), xytext=(fwhmR,np.max(y)/2), arrowprops=dict(arrowstyle='|-|', color='k'))
         
         plt.xlim(left=0, right=N)
         plt.minorticks_on()
